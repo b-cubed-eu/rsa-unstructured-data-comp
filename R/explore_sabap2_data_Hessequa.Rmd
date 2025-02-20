@@ -1,0 +1,1012 @@
+---
+title: "Explore SABAP2 data for Hessequa Atlas Area"
+author: "Katelyn Faulkner"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Load packages
+library(tidyverse) # Data wrangling and visualisation
+library(here)      # Relative paths
+library(sf)        # Work with spatial data
+```
+
+# Goal
+
+Explore structured data of the Hessequa systematic atlasing subproject of the “Southern African Bird Atlas Project 2” (SABAP2).
+
+Explore unstructured data from GBIF.
+
+Structured and unstructured data were prepared at both QDGC and pentad scales
+
+# Pentad scale
+
+## Structured data
+### Sampling framework
+
+The sampling framework was prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Data path
+data_path <- here::here("data", "interim")
+```
+
+```{r}
+# Read SABAP2 Hessequa atlas area sampling framework (5min x 5 min/ 8.2 km x 8.2 km)
+HAASF <- read_sf(file.path(data_path, "sampling_framework_SABAP2_pentad.gpkg"))
+
+# Explore dataframe
+glimpse(HAASF)
+```
+
+### Occurrence data
+
+The SABAP2 data were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read SABAP2 Hessequa atlas area bird data (5min x 5 min/ 8.2 km x 8.2 km)
+SABAP2HAAinterim <- read_sf(file.path(data_path, "SABAP2_Pentad_HAA_data.gpkg"))
+
+# Explore dataframe
+glimpse(SABAP2HAAinterim)
+```
+
+
+## Unstructured data cube
+
+Unstructured data from GBIF were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read unstructured Hessequa atlas area bird data (5min x 5 min/ 8.2 km x 8.2 km)
+UnstrucHAAinterim <- read_sf(file.path(data_path, "birdcube_Pentad_year_HAA.gpkg"))
+
+# Explore dataframe
+glimpse(UnstrucHAAinterim)
+```
+
+## Explore SABAP2 data for Hessequa Atlas Area
+
+The Hessequa Atlas Area is a ~110 x 55 km area near Stillbaai in the Western Cape of South Africa. In this area of the country, ongoing directed, systematic bird surveys following the Southern African Bird Atlas Programme 2(SABAP2) standard protocol have been conducted since October 2014. The data are collected following a standardised protocol (i.e., BirdMap protocol), whereby at least two hours, but a maximum of five days, are spent recording as many different bird species in the grid cell as possible, with the end of each hour of the survey noted. The data are are available at a 5-minute^2 spatial resolution, which equates to a resolution of ~ 8.2 km2 in southern Africa. The area covers 75 grid cells. Although the frequency of the surveys has changed over time, every grid cell has been surveyed at least once every year by the same group of people. The surveys are as follows:
+
+2015 and 2016: at least one standardised survey of each grid cell per year
+2017: at least two standardised surveys of each grid cell
+2018–2021: at least two standardised surveys of each grid cell per year, evenly spread over the seasons
+2021–current: at least one standardised survey of each grid cell per year, distributed evenly over the seasons
+
+The downloaded data contains 77 grid cells (the extras are 3420_2055 and 3415_2140). This is the area which is the Hessequa subproject according to SABAP2.
+
+It was noted that there were 2016 records where species was NA. Further investigation (examination of scientificName) indicated that these records were not identified to species level and were for:
+"Zosterope": a synonym according to GBIF of Zosterops Vigors & Horsfield, 1827
+"Psalidoprocne Cabanis, 1850"
+"Buteo Lacepede, 1799"
+"Sylvia Scopoli, 1769"       
+"Anas Linnaeus, 1758"  
+
+They were removed below.
+
+```{r}
+# Drop geometry, removed records not identified to species level, classify commonness, and group years. Used two year internals, as increase in iNat from 2021
+SABAP2HAA <-SABAP2HAAinterim %>% st_drop_geometry() %>%
+filter(!is.na(species)) %>%
+  mutate(cyclus = case_when(
+    year == 2015 | year == 2016 ~ 1,
+    year == 2017 | year == 2018 ~ 2,
+    year == 2019 | year == 2020 ~ 3,
+    year == 2021 | year == 2022 ~ 4,
+    year == 2023 | year == 2024 ~ 5,
+    )) %>%
+group_by(species) %>%
+  mutate(n_obs = n()) %>%
+  ungroup() %>%
+  mutate(category = cut(n_obs,
+                        breaks = c(0, 10, 100, 1000, 10000, +Inf),
+                        labels = c("Very rare", "Rare", "Common",
+                                   "Very common", "Extremely common"),
+                        right = FALSE))
+
+# Group by species, year and pentad
+SABAP2HAAGrp <-SABAP2HAA %>% 
+   group_by(species, year, pentad, category) %>%
+    summarise(n = n())
+
+glimpse(SABAP2HAAGrp)
+```
+
+```{r}
+summary(SABAP2HAA[, c("individualCount",
+                          "eventDate",
+                          "year",
+                          "month")])
+```
+
+Data run from January 2015 to February 2023. The period for which the data were downloaded were from January 2015 to December 2024. Data not being submitted to GBIF, or submission delayed.
+
+```{r}
+# total number of observations
+length(SABAP2HAA$species) 
+```
+
+```{r}
+# Number of observations per year
+SABAP2HAA %>%
+  ggplot(aes(x = year(eventDate))) +
+  geom_histogram()
+```
+
+Total of 100216 observations. Number of observations has varied across the years. Number of observations range between 10 000 - 15 000 per year, excluding 2023. Note few observations for 2023, as only data up until February 2023 have been submitted to GBIF.
+
+```{r}
+# Number of observations per species
+SABAP2HAAGrp %>%
+  group_by(species) %>%
+  summarise(n_obs = n()) %>%
+  ggplot(aes(x = n_obs)) +
+  geom_histogram() +
+  labs(x = "Number of observations",
+       y = "Number of species")
+```
+
+310 bird species recorded, of which 74 were recorded < 10 times (very rare), 80 were recorded between 10 and 100 times (rare), 123 were recorded between 100 and 1000 times (common),  and 33 were recorded between 1000 and 10000 times (very common). No birds species were recorded more than 10 000 times
+
+```{r}
+# Number of species falling into different commonness/observation categories
+SABAP2HAA %>%
+  distinct(category, species) %>%
+  group_by(category) %>%
+  summarise(n())
+```
+
+## Explore Unstructured data cube for Hessequa Atlas Area
+
+Unstructured data from GBIF for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. 
+
+It was noted that there were 34 records where species was NA. They were removed below.
+
+```{r}
+# Remove NAs and geometry and  and group years. Used two year internals, as increase in iNat from 2021
+UnstrucHAA<- UnstrucHAAinterim %>%
+  st_drop_geometry() %>%
+  filter(!is.na(species)) %>%
+mutate(cyclus = case_when(
+    year == 2015 | year == 2016 ~ 1,
+    year == 2017 | year == 2018 ~ 2,
+    year == 2019 | year == 2020 ~ 3,
+    year == 2021 | year == 2022 ~ 4,
+    year == 2023 | year == 2024 ~ 5,
+  ))
+```
+
+```{r}
+# total number of observations
+sum(UnstrucHAA$n) 
+```
+
+```{r}
+# Number of observations per year***
+UnstrucHAA %>%
+  group_by(year) %>%
+  summarise(n_obs = sum(n)) %>%
+  ggplot(aes(x = year, y = n_obs)) +
+  geom_col() +
+  labs(x = "Year",
+       y = "Number of observations") + scale_x_continuous(breaks=seq(2015,2024,1))
+```
+
+Total number of observations is 2138. The number of records was around or less than 100 per year  between 2015 and 2020, but subsequently increased to between 300 and 450 per year for 2021-2023, and to ~550 in 2024. The publishers of the data are: Observation.org, iNaturalist.org, naturgucker.de. But most are from iNaturalist and this is what has driven the increase in records since 2020.
+
+```{r}
+# Number of observations per species***
+UnstrucHAA %>%
+  group_by(species) %>%
+  summarise(n_obs = sum(n)) %>%
+  ggplot(aes(x = n_obs)) +
+  geom_histogram() +
+  labs(x = "Number of observations",
+       y = "Number of species")
+```
+
+217 bird species recorded, of which 133 were recorded < 10 times (very rare), 84 were recorded between 10 and 100 times (rare). No birds species were recorded more than 100 times
+
+```{r}
+# Number of species in different observation/commoness categories***
+UnstrucHAA %>%
+  group_by(species) %>%
+  summarise(n_obs = sum(n)) %>%
+  mutate(category = cut(n_obs,
+                        breaks = c(-Inf, 0, 1, 10, 100, 1000, 10000, Inf),
+                        right = FALSE)) %>%
+  group_by(category) %>%
+  summarise(n())
+```
+
+## Comparing data
+
+Note the SABAP2 dataset used below contains only pentads for Hessequa Atlas Area (77 pentads), data from 2015 to 2023, and the geometry and NA species have been removed. 
+
+The unstructured data used below contains only pentads for Hessequa Atlas Area (77 pentads), data from 2015 to 2024, and the geometry and NA species have been removed. 
+
+### The total period 2015-2024 is used for comparison.
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2HAA$species) %>%
+  na.omit()
+```
+
+#### Species overlap between two datasets
+
+```{r}
+# calculate number and percentage of species in sabap2 that are in unstructured data***
+SppOverlapInd<-which(UnstrucHAA$species %in% studied_spec)
+SppOverlap<-unique(UnstrucHAA$species[SppOverlapInd]) # overlapping species
+NoSppOverlap<-length(SppOverlap)
+PercSppOverlap<-NoSppOverlap/length(studied_spec)*100
+NoSppOverlap # number of species in unstructured data that are in sabap2 data
+PercSppOverlap # percentage of species in sabap2 data that are in unstructured data
+```
+
+```{r}
+# how common (based on sabap2) are the overlapping species, and not-overlapping species**
+ind<-which(SABAP2HAA$species %in% SppOverlap)
+SppOverlapDeats<-unique(SABAP2HAA[ind,c('species', 'category')])
+commonOverlap<-SppOverlapDeats %>%
+group_by(category) %>%
+  summarise(overlap = n())
+
+SppNotOverlapDeats<-unique(SABAP2HAA[-ind,c('species', 'category')])
+commonNotOverlap<-SppNotOverlapDeats %>%
+group_by(category) %>%
+  summarise(notOverlap = n())
+
+commonOverlap %>%
+left_join(commonNotOverlap, by = join_by(category)) %>%
+  rowwise() %>%
+  mutate(total = sum(overlap,notOverlap)) %>%
+ mutate(perc = overlap/total*100)
+```
+
+Of the 310 species in the SABAP2 data, 197 are in the unstructured data (64%). Of the 197, 8 are very rare, 49 are rare, 108 are common, and 32 very common. Of the 113 species in SABAP2 that are missing from the unstructured data 66 are very rare, 31 are rare, 15 are common and 1 is very common. The percentage of species recorded in the unstructured data increased with commonness: 11% of very rare species were recorded, 61% of rare species were recorded, 88% of common species were recorded, and 97% of very common species were recorded.
+
+#### Range overlap
+
+```{r}
+range_comp <- function(sel_species, period = 2015:2024,
+                       dataset1 = SABAP2HAA,
+                       dataset2 = UnstrucHAA) {
+
+  # We filter both datasets for the species and period of interest
+  # and group them by pentad
+  set_sabap2 <- dataset1 %>%
+    st_drop_geometry() %>%
+    filter(.data$species %in% sel_species,
+           .data$year %in% period) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = n()) # no observations rather than no individuals
+
+  set_cube <- dataset2 %>%
+    st_drop_geometry() %>%
+    filter(.data$species %in% sel_species,
+           .data$year %in% period) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = sum(.data$n))
+
+  total_sabap2 <- length(set_sabap2$pentad)
+  perc_sabap2 <- (total_sabap2 / 77) * 100 # have taken the value to be total number of grid cells in area of interest
+  
+  total_cube <- length(set_cube$pentad)
+  perc_cube <- (total_cube / 77) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  overlap_all_sabap2_cube <- length(
+    which(set_cube$pentad %in% unique(dataset1$pentad)) # Logischer om totaal birdcubes te maken en dan percentage?
+    )
+  perc_overlap_all <- (overlap_all_sabap2_cube / 77) * 100 # have taken the value to be total number of grid cells in the sabap2 data
+
+  total_overlap <- length(which(set_cube$pentad %in% set_sabap2$pentad))
+  perc <- (total_overlap / total_sabap2) * 100 
+
+  list(total_sabap2, perc_sabap2,
+       total_cube, perc_cube,
+       overlap_all_sabap2_cube, perc_overlap_all,
+       total_overlap, perc)
+}
+```
+
+```{r}
+comp_range_data <- as.data.frame(studied_spec)
+comp_range_data$sabap2_squares <- NA
+comp_range_data$perc_sabap2_total_sabap2 <- NA
+comp_range_data$cube_squares <- NA
+comp_range_data$perc_cube_total_cube <- NA
+comp_range_data$overlap_birdcube_total_sabap2 <- NA
+comp_range_data$perc_birdcube_total_sabap2 <- NA
+comp_range_data$overlap_birdcube_spec_sabap2 <- NA
+comp_range_data$percentage_birdcube_spec_sabap2 <- NA
+
+for (i in studied_spec){
+  test <- range_comp(i, period = 2015:2024)
+  
+  comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
+  comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
+  comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
+  comp_range_data[comp_range_data$studied_spec == i, 5] <- test[4]
+  comp_range_data[comp_range_data$studied_spec == i, 6] <- test[5]
+  comp_range_data[comp_range_data$studied_spec == i, 7] <- test[6]
+  comp_range_data[comp_range_data$studied_spec == i, 8] <- test[7]
+  comp_range_data[comp_range_data$studied_spec == i, 9] <- test[8]
+}
+```
+
+```{r}
+comp_range_data %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  DT::datatable() %>%
+  DT::formatRound(columns = c("perc_sabap2_total_sabap2",
+                              "perc_cube_total_cube",
+                              "perc_birdcube_total_sabap2",
+                              "percentage_birdcube_spec_sabap2"), digits = 2)
+```
+
+This table shows the number of sabap2 squares where a species was observed, the percentage of total sabap2 squares, the number of cube squares were the species was observed, the percentage of all cube squares, the number of sabap2 squares where the species was observed based on the birdcube data, the percentage compared to all sabap2 squares, the number of squares occupied by the species in both the sabap2 and birdcube data and the percentage of this compared to the number of squares occupied by this species in th sabap2 data.
+
+```{r}
+# summary of output
+summary(comp_range_data)
+```
+
+Overall we see an overlap of 8.7%
+
+```{r}
+# plot percentage range overlap*
+comp_range_data %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
+  geom_histogram() +
+  labs(x = "Percentage range overlap",
+       y = "Number of species")
+```
+
+Most species have very low percentage overlap. The outliers with high percentage overlap are a few rare/very rare species.
+
+```{r}
+# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage overlapping cells in cube
+comp_range_data %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_birdcube_total_sabap2, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson")
+```
+
+If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which there is overlap between the sabap2 records and cube records.
+
+Note all species with perc_birdcube_total_sabap2 > 15 are native to RSA
+
+```{r}
+# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
+comp_range_data %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson")
+```
+
+If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. But note these squares might not overlap
+
+
+```{r}
+comp_range_data %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  filter(category %in% c("Common", "Very common", "Extremely common")) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson")
+```
+
+For common and very common species (rare excluded) - If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. But these squares might not overlap
+
+### Plots for different time periods
+
+```{r}
+# Calculate range overlap metrics for two-year periods
+comp_range_data2 <- data.frame(studied_spec = rep(studied_spec, 5),
+                               sabap2_squares = NA,
+                               perc_sabap2_total_sabap2 = NA,
+                               cube_squares = NA,
+                               perc_cube_total_cube = NA,
+                               percentage_birdcube_spec_sabap2 = NA, #added
+                               cyclus = NA)
+
+start_year <- 2015
+end_year <- 2024
+
+cycle_starts <- seq(from = start_year, to = end_year, by = 2)
+c = 1
+j = 1
+
+for (cycle_start in cycle_starts) {
+  for (i in studied_spec) {
+    comp_range_data2$cyclus[j] <- c
+    comp_range_data2$studied_spec[j] = i
+    
+    test <- range_comp(i, period = cycle_start:(cycle_start + 2))
+    
+    comp_range_data2$sabap2_squares[j] <- test[[1]]
+    comp_range_data2$perc_sabap2_total_sabap2[j] <- test[[2]]
+    comp_range_data2$cube_squares[j] <- test[[3]]
+    comp_range_data2$perc_cube_total_cube[j] <- test[[4]]
+    comp_range_data2$percentage_birdcube_spec_sabap2[j] <- test[[8]] # added
+    
+    j = j + 1
+  }
+  c = c + 1
+}
+```
+
+```{r}
+# Plot percentage cells in which species were recorded in sabap2 vs in unstructured data for each two-year period
+comp_range_data2 %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson") +
+  facet_grid("cyclus",
+             scales = "free_y")
+```
+
+The positive correlation between percentage squares in SABAP2 data and cube holds if we look at different time periods. Time peroid 1 = 2015 and 2016, time period 2 = 2017 and 2018, time period 3 = 2019 and 2020, time period 4 = 2021 and 2022, and time period 5 = 2023 and 2024. Note, the correlation gets stronger through the different time periods, and is strongest in 2021/2022 when iNat records increased. Note the results from 2023/2024 look odd as very little sabap2 data submitted to GBIF for this period.
+
+```{r}
+# plot percentage range overlap for each period***
+comp_range_data2 %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
+  geom_histogram() +
+  labs(x = "Percentage range overlap",
+       y = "Number of species") + facet_grid("cyclus", scales = "free_y")
+```
+
+For all time periods most species have very low percentage overlap. But as time progresses and more unstructured data becomes available, this percentage increases.
+
+### The period 2015-2022 is used for comparison.
+
+```{r}
+# remove data from 2023 and 2024
+SABAP2HAASub<-SABAP2HAA %>%
+  filter(cyclus != "5")
+
+UnstrucHAASub<-UnstrucHAA %>%
+  filter(cyclus != "5")
+```
+
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2HAASub$species) %>%
+  na.omit()
+```
+
+#### Species overlap between two datasets
+
+```{r}
+# calculate number and percentage of species in sabap2 that are in unstructured data***
+SppOverlapSubInd<-which(UnstrucHAASub$species %in% studied_spec)
+SppOverlapSub<-unique(UnstrucHAASub$species[SppOverlapSubInd]) # overlapping species
+NoSppOverlapSub<-length(SppOverlapSub)
+PercSppOverlapSub<-NoSppOverlapSub/length(studied_spec)*100
+NoSppOverlapSub # number of species in unstructured data that are in sabap2 data
+PercSppOverlapSub # percentage of species in sabap2 data that are in unstructured data
+```
+
+```{r}
+# how common (based on sabap2) are the overlapping species, and not-overlapping species**
+ind<-which(SABAP2HAASub$species %in% SppOverlapSub)
+SppOverlapDeatsSub<-unique(SABAP2HAASub[ind,c('species', 'category')])
+commonOverlap<-SppOverlapDeatsSub %>%
+group_by(category) %>%
+  summarise(overlap = n())
+
+SppNotOverlapDeatsSub<-unique(SABAP2HAASub[-ind,c('species', 'category')])
+commonNotOverlap<-SppNotOverlapDeatsSub %>%
+group_by(category) %>%
+  summarise(notOverlap = n())
+
+commonOverlap %>%
+  left_join(commonNotOverlap, by = join_by(category)) %>%
+  rowwise() %>%
+  mutate(total = sum(overlap,notOverlap)) %>%
+  mutate(perc = overlap/total*100)
+```
+
+Of the 310 species in the SABAP2 data (all appear in the period from 2015 to 2022), 165 are in the unstructured data (53%). Of the 165, 6 are very rare, 31 are rare, 96 are common, and 32 very common. Of the 145 species in SABAP2 that are missing from the unstructured data 68 are very rare, 49 are rare, 27 are common and 1 is very common. The percentage of species recorded in the unstructured data increased with commonness: 8% of very rare species were recorded, 39% of rare species were recorded, 78% of common species were recorded, and 97% of very common species were recorded.
+
+Many more species are missing from the unstructured data for this time period (i.e., excluding 2023 and 2024)
+
+#### Range overlap
+
+```{r}
+range_comp <- function(sel_species, period = 2015:2022,
+                       dataset1 = SABAP2HAASub,
+                       dataset2 = UnstrucHAASub) {
+
+  # We filter both datasets for the species and period of interest
+  # and group them by pentad
+  set_sabap2 <- dataset1 %>%
+    st_drop_geometry() %>%
+    filter(.data$species %in% sel_species,
+           .data$year %in% period) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = n()) # no observations rather than no individuals
+
+  set_cube <- dataset2 %>%
+    st_drop_geometry() %>%
+    filter(.data$species %in% sel_species,
+           .data$year %in% period) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = sum(.data$n))
+
+  total_sabap2 <- length(set_sabap2$pentad)
+  perc_sabap2 <- (total_sabap2 / 77) * 100 # have taken the value to be total number of grid cells in area of interest
+  
+  total_cube <- length(set_cube$pentad)
+  perc_cube <- (total_cube / 77) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  overlap_all_sabap2_cube <- length(
+    which(set_cube$pentad %in% unique(dataset1$pentad)) # Logischer om totaal birdcubes te maken en dan percentage?
+    )
+  perc_overlap_all <- (overlap_all_sabap2_cube / 77) * 100 # have taken the value to be total number of grid cells in the sabap2 data
+
+  total_overlap <- length(which(set_cube$pentad %in% set_sabap2$pentad))
+  perc <- (total_overlap / total_sabap2) * 100 
+
+  list(total_sabap2, perc_sabap2,
+       total_cube, perc_cube,
+       overlap_all_sabap2_cube, perc_overlap_all,
+       total_overlap, perc)
+}
+```
+
+```{r}
+comp_range_data <- as.data.frame(studied_spec)
+comp_range_data$sabap2_squares <- NA
+comp_range_data$perc_sabap2_total_sabap2 <- NA
+comp_range_data$cube_squares <- NA
+comp_range_data$perc_cube_total_cube <- NA
+comp_range_data$overlap_birdcube_total_sabap2 <- NA
+comp_range_data$perc_birdcube_total_sabap2 <- NA
+comp_range_data$overlap_birdcube_spec_sabap2 <- NA
+comp_range_data$percentage_birdcube_spec_sabap2 <- NA
+
+for (i in studied_spec){
+  test <- range_comp(i, period = 2015:2022)
+  
+  comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
+  comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
+  comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
+  comp_range_data[comp_range_data$studied_spec == i, 5] <- test[4]
+  comp_range_data[comp_range_data$studied_spec == i, 6] <- test[5]
+  comp_range_data[comp_range_data$studied_spec == i, 7] <- test[6]
+  comp_range_data[comp_range_data$studied_spec == i, 8] <- test[7]
+  comp_range_data[comp_range_data$studied_spec == i, 9] <- test[8]
+}
+```
+
+```{r}
+comp_range_data %>%
+  inner_join(SABAP2HAASub %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  DT::datatable() %>%
+  DT::formatRound(columns = c("perc_sabap2_total_sabap2",
+                              "perc_cube_total_cube",
+                              "perc_birdcube_total_sabap2",
+                              "percentage_birdcube_spec_sabap2"), digits = 2)
+```
+
+This table shows the number of sabap2 squares where a species was observed, the percentage of total sabap2 squares, the number of cube squares were the species was observed, the percentage of all cube squares, the number of sabap2 squares where the species was observed based on the birdcube data, the percentage compared to all sabap2 squares, the number of squares occupied by the species in both the sabap2 and birdcube data and the percentage of this compared to the number of squares occupied by this species in th sabap2 data.
+
+```{r}
+# summary of output
+summary(comp_range_data)
+```
+
+Overall we see an overlap of 5.5% (lower than for 2015-2024)
+
+```{r}
+# plot percentage range overlap***
+comp_range_data %>%
+  inner_join(SABAP2HAASub %>% distinct(species, category),
+             by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
+  geom_histogram() +
+  labs(x = "Percentage range overlap", y = "Number of species")
+```
+
+Most species have very low percentage overlap. The outliers with high percentage overlap are a few rare/very rare species.
+
+```{r}
+# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage overlapping cells in cube
+comp_range_data %>%
+  inner_join(SABAP2HAASub %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_birdcube_total_sabap2, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson")
+```
+
+If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which there is overlap between the sabap2 records and cube records.
+
+```{r}
+# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
+comp_range_data %>%
+  inner_join(SABAP2HAASub %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson")
+```
+
+If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. But note these squares might not overlap
+
+```{r}
+# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data (common and very common species only)
+comp_range_data %>%
+  inner_join(SABAP2HAASub %>% distinct(species, category),
+            by = join_by(studied_spec == species)) %>%
+  filter(category %in% c("Common", "Very common", "Extremely common")) %>%
+  ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
+  geom_point() +
+  ggpubr::stat_cor(mapping = aes(color = NULL),
+           label.x.npc = "centre",
+           label.y.npc = "bottom",
+           method = "pearson")
+```
+
+For common and very common species (rare excluded) - If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. But these squares might not overlap
+
+## Trend analysis
+
+```{r}
+# No records per year per species
+time_series_1 <- SABAP2HAA %>%
+  st_drop_geometry() %>%
+  group_by(species, year) %>%
+  summarize(occurrence = sum(occurrenceStatus == "PRESENT"))
+```
+
+```{r}
+# No records per year per species**
+time_series_2 <- UnstrucHAA %>%
+  st_drop_geometry()  %>%
+  group_by(species, year)  %>%
+  summarize(occurrence = sum(n)) 
+```
+
+```{r}
+# Pearson Correlation for each species
+# inner_join makes sure that only species-year combinations present
+# in both datasets are included
+time_series_cor <- time_series_1 %>%
+  inner_join(time_series_2,
+             by = c("species", "year"),
+             suffix = c("_1", "_2")) %>%
+  group_by(species) %>%
+  summarize(correlation = cor(occurrence_1, occurrence_2, method = "pearson"))
+```
+
+```{r}
+# Visualise results**
+time_series_cor %>%  
+ggplot(aes(x = correlation)) +
+  geom_histogram() +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+For each species does number of records over time in SABAP2 correlate with number of records over time in unstructured data. Results are all over the place, and for many species the correlation is NA ()
+
+```{r}
+# No records per time-period per species
+time_series_1 <- SABAP2HAA %>%
+  st_drop_geometry() %>%
+  group_by(species, cyclus) %>%
+  summarize(occurrence = sum(occurrenceStatus == "PRESENT")) %>%
+  filter(cyclus < 5)
+```
+
+```{r}
+# No records per time-period per species***
+time_series_2 <- UnstrucHAA %>%
+  st_drop_geometry()  %>%
+  group_by(species, cyclus)  %>%
+  summarize(occurrence = sum(n)) %>% 
+  filter(cyclus < 5)
+```
+
+```{r}
+# Pearson Correlation for each species
+# inner_join makes sure that only species-time-period combinations present
+# in both datasets are included
+time_series_cor <- time_series_1 %>%
+  inner_join(time_series_2,
+             by = c("species", "cyclus"),
+             suffix = c("_1", "_2")) %>%
+  group_by(species) %>%
+  summarize(correlation = cor(occurrence_1, occurrence_2, method = "pearson"))
+```
+
+```{r}
+time_series_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(species == species)) %>%
+  DT::datatable() %>%
+  DT::formatRound(columns = "correlation", digits = 2)
+```
+
+```{r}
+# Visualise results**
+time_series_cor %>%  
+ggplot(aes(x = correlation)) +
+  geom_histogram() +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+For each species does number of records over time in SABAP2 correlate with number of records over time in unstructured data. Results are all over the place, and for many 72 species the correlation is NA (). But, for > 20 species correlation = 1, and for > 10 species correlation = -1.
+
+```{r}
+# summarise correlations per commonness group*
+time_series_cor<-time_series_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+            by = join_by(species == species)) 
+
+time_series_cor %>%
+  group_by(category) %>%
+  summarize(mean(correlation, na.rm = TRUE))
+```
+
+```{r}
+# How many for each commonness group is correlation NA
+time_series_cor %>%
+  group_by(category) %>%
+  summarise(n = n(), sumNA = sum(is.na(correlation)))
+```
+
+```{r}
+# Visualise results**
+time_series_cor %>%  
+  ggplot(aes(x = correlation, fill = category)) +
+  geom_histogram() +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+Negative correlation for rare species, NA for very rare species, and weak (no) correlation for other groups. Note all very rare species had a NA correltation, most rare too. All species with positive, strong correlations were common or very common.
+
+### Trend similarity
+
+```{r}
+studied_spec <- unique(SABAP2HAA$species) %>% na.omit()
+```
+
+
+```{r}
+# Calculate number of SABAP2 records per species per time period, and change from one period to the next
+sabap2_dif <- SABAP2HAA %>%
+  group_by(cyclus, species) %>%
+  summarise(total = n()) %>% # no records in SABAP2 data
+  pivot_wider(names_from = cyclus,
+              names_prefix = "sabap2_",
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(dif1 = sabap2_2 - sabap2_1,
+         dif2 = sabap2_3 - sabap2_2,
+         dif3 = sabap2_4 - sabap2_3)
+```
+
+```{r}
+# Calculate number of unstructured records per species per time period, and change from one period to the next
+cube_dif <- UnstrucHAA %>%
+  filter(species %in% studied_spec) %>%
+  group_by(cyclus, species) %>%
+  summarise(total = sum(n)) %>% # no records
+  pivot_wider(names_from = cyclus,
+              names_prefix = "cube_",
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(dif1_cube = cube_2 - cube_1,
+         dif2_cube = cube_3 - cube_2,
+         dif3_cube = cube_4 - cube_3) %>%
+  select(species, dif1_cube, dif2_cube, dif3_cube)
+```
+
+```{r}
+# Compare the changes over time periods per species between the two datasets
+# TRUE if positive change, FALSE if negative change
+comp_dir <- sabap2_dif %>%
+  select(species, dif1, dif2, dif3) %>%
+  inner_join(cube_dif) %>%
+  mutate(dif1 = dif1 > 0,
+         dif2 = dif2 > 0,
+         dif3 = dif3 > 0,
+         dif1_cube = dif1_cube > 0,
+         dif2_cube = dif2_cube > 0,
+         dif3_cube = dif3_cube > 0) %>%
+  pivot_longer(
+    cols = !species
+  ) %>%
+  mutate(set = ifelse(str_detect(name, "cube"),
+                      "cube",
+                      "sabap2")) %>%
+  mutate(dif = str_sub(name, 1, 4)) %>%
+  select(-name) %>%
+  pivot_wider(names_from = set,
+              values_from = value)
+```
+
+```{r}
+# Perform Kappa analysis (how well do the two datasets agree in terms of change direction)
+vcd::Kappa(table(comp_dir[,c(3,4)]))
+```
+
+K value  = 0.1413, so there is a 'slight' agreement
+
+```{r}
+# Calculate number of SABAP2 records per rare species per time period, and change from one period to the next
+sabap2_dif <- SABAP2HAA %>%
+  filter(category %in% c("Rare")) %>%
+  group_by(cyclus, species) %>%
+  summarise(total = n()) %>% # no records
+  pivot_wider(names_from = cyclus,
+              names_prefix = "sabap2_",
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(dif1 = sabap2_2 - sabap2_1,
+         dif2 = sabap2_3 - sabap2_2,
+         dif3 = sabap2_4 - sabap2_3)
+```
+
+```{r}
+# Calculate number of unstructured data records per rare species per time period, and change from one period to the next
+cube_dif <- UnstrucHAA %>%
+  filter(species %in% sabap2_dif$species) %>%
+  group_by(cyclus, species) %>%
+  summarise(total = sum(n)) %>%
+  pivot_wider(names_from = cyclus,
+              names_prefix = "cube_",
+              values_from = total,
+              values_fill = 0) %>%
+  mutate(dif1_cube = cube_2 - cube_1,
+         dif2_cube = cube_3 - cube_2,
+         dif3_cube = cube_4 - cube_3) %>%
+  select(species, dif1_cube, dif2_cube, dif3_cube)
+```
+
+```{r}
+# Compare the changes over time periods per rare species between the two datasets
+# TRUE if positive change, FALSE if negative change
+comp_dir <- sabap2_dif %>%
+  select(species, dif1, dif2, dif3) %>%
+  inner_join(cube_dif) %>%
+  mutate(dif1 = dif1 > 0,
+         dif2 = dif2 > 0,
+         dif3 = dif3 > 0,
+         dif1_cube = dif1_cube > 0,
+         dif2_cube = dif2_cube > 0,
+         dif3_cube = dif3_cube > 0) %>%
+  pivot_longer(
+    cols = !species
+  ) %>%
+  mutate(set = ifelse(str_detect(name, "cube"),
+                      "cube",
+                      "sabap2")) %>%
+  mutate(dif = str_sub(name, 1, 4)) %>% 
+  select(-name) %>%
+  pivot_wider(names_from = set,
+              values_from = value)
+```
+
+```{r}
+# Perform Kappa analysis (how well do the two datasets agree in terms of change direction)
+vcd::Kappa(table(comp_dir[,c(3,4)]))
+```
+
+Kappa value = 0.7388 so poor agreement
+
+## Occupancy rate comparrison
+
+```{r}
+# Give '1' to the squares each species is recorded in SABAP2
+occupancy_1 <- SABAP2HAA %>%
+  group_by(species, pentad) %>%
+  summarize(occupancy_rate_1 = mean(occurrenceStatus == "PRESENT"))
+```
+
+```{r}
+# Give '1' to the squares each species is recorded in SABAP2***
+occupancy_2 <- UnstrucHAA %>%
+  group_by(species, pentad) %>%
+  summarize(occupancy_rate_2 = 1) 
+```
+
+## species richness and composition
+
+```{r}
+# Species richness per pentad
+richness_1 <- SABAP2HAA %>%
+  group_by(pentad) %>%
+  summarize(richness = n_distinct(species))
+
+richness_2 <- UnstrucHAA %>%
+  group_by(pentad) %>%
+  summarize(richness = n_distinct(species))
+
+# Bray-Curtis dissimilarity
+# Number of records per species in sabap2
+species_composition_1 <- SABAP2HAA %>%
+  drop_na(species) %>% 
+  count(species) %>% # number of records per species
+  pivot_wider(names_from = species,
+              values_from = n,
+              values_fill = 0)
+
+# Number of records per species in unstuctured data
+species_composition_2 <- UnstrucHAA %>%
+  filter(species %in% studied_spec) %>%
+  group_by(species) %>%
+  summarise(n = sum(n)) %>% # number of records per species***
+  pivot_wider(names_from = species,
+              values_from = n,
+              values_fill = 0)
+
+# make sure the two datasets have the same columns
+addSpp<-setdiff(colnames(species_composition_1), colnames(species_composition_2))
+species_composition_2<- species_composition_2 %>% bind_cols(setNames(rep(list(0), length(addSpp)), addSpp))
+species_composition_2<-species_composition_2[colnames(species_composition_1)]
+
+#Bray curtis
+bray_curtis <- vegan::vegdist(rbind(species_composition_1[-1],
+                             species_composition_2[-1]), method = "bray")
+bray_curtis # 0.96... very different
+```
+
