@@ -1,0 +1,457 @@
+---
+title: "Prepare SABAP2 data for Hessequa Atlas Area"
+author: "Katelyn Faulkner"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Load packages
+library(tidyverse) # Data wrangling and visualisation
+library(zen4R)     # Download from zenodo
+library(here)      # Relative paths
+library(sf)        # Work with spatial data
+library(rgbif)     # To request occurrence cubes
+```
+
+# Goal
+
+Load and save structured data of the Hessequa systematic atlasing subproject of the “Southern African Bird Atlas Project 2” (SABAP2).
+
+Load and save unstructured data from GBIF.
+
+# Structured data
+## Sampling framework
+
+The sampling framework is downloaded as a geoJSON file from https://sabap2.birdmap.africa/coverage/group/Hssq1.
+Follow the instructions to download the file, then save it as a shapefile and store under *./data/raw*.
+
+We read in the dataset.
+
+```{r}
+# Data path and create directory if necessary
+data_path <- here::here("data", "raw")
+dir.create(data_path, showWarnings = FALSE, recursive = TRUE)
+```
+
+
+```{r}
+# Read SABAP2 Hessequa atlas area pentad grid (5min x 5 min/ 8.2 km x 8.2 km)
+HAASFraw <- read_sf(file.path(data_path, "Hessequa_sampling_framework", "Hessequa_sampling_framework.shp"))
+
+# Explore dataframe
+glimpse(HAASFraw)
+```
+
+## Occurrence data
+
+Occurrence data is downloaded from GBIF.org.
+Unzip and store folders under *./data/raw*.
+The SABAP2 dataset was filtered so that only data from the Western Cape (Administrative areas = Western Cape - ZAF.9_1) was downloaded
+
+**SABAP2 - Southern African Bird Atlas Project 2**: 0000102-240626123714530.zip
+
+GBIF.org (17 January 2025) GBIF Occurrence Download https://doi.org/10.15468/dl.95kujb
+
+We read in the dataset.
+
+```{r}
+# Read SABAP2 data as tab delimited
+SABAP2WCraw <- read_delim(file.path(data_path,
+                                     "0073671-241126133413365",
+                                     "occurrence.txt"),
+                   delim = "\t",
+                   show_col_types = FALSE)
+
+# Explore dataframe
+glimpse(SABAP2WCraw)
+```
+
+
+# Unstructured data 
+
+## Download cube (qdgc per year)
+
+KF retrieved the species occurrence cubes using rgbif. 
+The occurrence cube on a qdgc scale per year.
+To account for sampling bias, the specification recommends including an occurrence count for a higher taxon, typically the family.
+
+The query selected:
+Excluded SABAP2 data.
+
+Note personal details (usernname, password and email address) have been removed 
+
+```{r}
+# yearly cube
+occ_download_sql(user = "", pwd = "", email = "",
+                 "SELECT \"year\",
+                 GBIF_EQDGCCode(2, decimalLatitude, decimalLongitude, COALESCE(coordinateUncertaintyInMeters, 1000)) AS qdgcCode,
+                 speciesKey,
+                 species,
+                 family,
+                 COUNT(*) AS n,
+                 MIN(COALESCE(coordinateUncertaintyInMeters, 1000)) AS minCoordinateUncertaintyInMeters, IF(ISNULL(family), NULL, SUM(COUNT(*)) OVER (PARTITION BY family)) AS familyCount FROM occurrence WHERE class = 'Aves' AND occurrenceStatus = 'PRESENT' AND NOT ARRAY_CONTAINS(issue, 'ZERO_COORDINATE') AND NOT ARRAY_CONTAINS(issue, 'COORDINATE_OUT_OF_RANGE') AND NOT ARRAY_CONTAINS(issue, 'COORDINATE_INVALID') AND NOT ARRAY_CONTAINS(issue, 'COUNTRY_COORDINATE_MISMATCH') AND level1Gid = 'ZAF.9_1' AND speciesKey IS NOT NULL AND decimalLatitude IS NOT NULL AND decimalLongitude IS NOT NULL AND collectionCode != 'SABAP2'
+GROUP BY
+\"year\",
+qdgcCode,
+speciesKey,
+family,
+species ORDER BY 
+\"year\" ASC,
+qdgcCode ASC,
+speciesKey ASC")
+```
+
+
+**Unstructured bird data Western Cape QGDC cube**: 0002739-250121130708018.zip: 0000102-240626123714530.zip
+
+GBIF.org (23 January 2025) GBIF Occurrence Download https://doi.org/10.15468/dl.pc226a
+
+We read in the dataset.
+
+```{r}
+# Read in datacube from CSV
+birdcubeWCYearQDGC <- read_delim(file.path(data_path,
+                                     "0002739-250121130708018", "0002739-250121130708018.csv"),
+                   delim = "\t",
+                   show_col_types = FALSE)
+
+# Explore dataframe
+glimpse(birdcubeWCYearQDGC)
+```
+
+## Download occurrence data and create cube (pentad per year)
+
+Cube at pentad resolution not possible through rgbif. So created one.
+
+Occurrence data is downloaded from GBIF.org.
+Unzip and store folders under *./data/raw*.
+Filters were:
+Occurrence status = Present
+Class = Aves
+Year = Between 2015 and 2024
+Administrative areas (gadm) = Western Cape - ZAF.9_1
+Co-ordinate uncertainty between 0 and 1000 m
+Excluded SABAP2 dataset
+
+**Unstructured bird data Western Cape**: 0000026-250117103327516.zip
+
+GBIF.org (17 January 2025) GBIF Occurrence Download https://doi.org/10.15468/dl.k7qbd8
+
+We read in the dataset.
+
+```{r}
+# Read unstructured data as tab delimited
+birdsWCraw<- read_delim(file.path(data_path,
+                                     "0000026-250117103327516",
+                                     "occurrence.txt"),
+                   delim = "\t",
+                   show_col_types = FALSE)
+
+# Explore dataframe
+glimpse(birdsWCraw)
+```
+
+```{r}
+# select columns required
+birdsWC<- birdsWCraw %>% select (c('year', 'month', 'family', 'speciesKey', 'species', 'decimalLatitude', 'decimalLongitude', 'coordinateUncertaintyInMeters'))
+```
+
+```{r}
+# calculate the pentad based on co-ordinates and create a pentad column
+# have also written a function to do this
+
+birdsWC<-birdsWC %>% separate(decimalLatitude, c("degreesLat", "otherLat"), "\\.", remove = FALSE)%>%
+  mutate(otherLat = (as.numeric(paste0("0.", otherLat)))*60) %>%
+  mutate(otherLat = sprintf('%02d', plyr::round_any(otherLat, 5, floor))) %>%
+mutate(degreesLat = gsub("-","",degreesLat))  %>% 
+  unite("pentadLat", degreesLat:otherLat, remove = TRUE, sep = "")
+ 
+birdsWC<-birdsWC %>% separate(decimalLongitude, c("degreesLong", "otherLong"), "\\.", remove = FALSE)%>%
+  mutate(otherLong = (as.numeric(paste0("0.", otherLong)))*60) %>%
+  mutate(otherLong = sprintf('%02d', (plyr::round_any(otherLong, 5, floor)))) %>%
+mutate(degreesLong = gsub("-","",degreesLong))  %>% 
+  unite("pentadLong", degreesLong:otherLong, remove = TRUE, sep = "")  
+
+birdsWC<-birdsWC %>% unite("pentad", c(pentadLat,pentadLong), sep = "_", remove = TRUE)
+
+```
+
+```{r}
+# Group by year, species, pentad, speciesKey, family. Count the occurrences and calculate minimum coordinateUncertaintyInMeters
+birdcubeWCYearPentad <-birdsWC %>% 
+    group_by(year, pentad, species, speciesKey, family) %>%
+    summarise(n = n(), mincoordinateUncertaintyInMeters = min(coordinateUncertaintyInMeters))
+
+# count records per family per pentad per year
+familyn <-birdsWC %>% 
+    group_by(year, pentad, family) %>%
+    summarise(familycount = n())
+
+# join family counts to occurrence cube
+birdcubeWCYearPentad<- birdcubeWCYearPentad %>% left_join(familyn)
+ 
+# Look at output
+glimpse(birdcubeWCYearPentad)
+```
+
+# Subset datasets 
+
+Select Hessequa grid cells, data falling into correct time period, and where full protocol was used
+
+## SABAP2 data for Western Cape
+
+Need to select cells that fall into Hessequa Atlas Area
+Need to select data from years between 2015 and 2024
+Need to select records from events where full sampling protocol followed (i.e., adhoc sampling removed)
+Need to have a column called 'pentad'
+Need to add a column with qdgc information
+
+```{r}
+# subset data to include years between 2015 and 2024
+SABAP2WC<-SABAP2WCraw %>% filter(year >= 2015 & year <=2024)
+
+# subset data to include only full protocol data
+SABAP2WC<-SABAP2WC %>% filter(grepl("fullprot", SABAP2WC$occurrenceID, fixed = TRUE))
+
+# subset data to only include records from Hessequa atlas area
+Hpentads<-unique(HAASFraw$pentad) # pentads in Hessequa atlas area
+SABAP2HAA <- SABAP2WC %>% filter(SABAP2WC$verbatimLocality %in% Hpentads)
+
+# create new column called pentad
+SABAP2HAA <- SABAP2HAA  %>%
+  mutate(pentad = verbatimLocality)
+
+# create new column called qdgccode
+SABAP2HAA <- SABAP2HAA  %>%
+  separate(locationRemarks, into = c('Long', 'Lat', 'Code'), sep = c(2,4), remove = FALSE) %>%
+mutate(Long = paste0("S", Long))%>%
+  mutate(Lat = paste0("E0", Lat))%>%
+  unite(qdgccode, c(Lat,Long,Code), remove = TRUE, sep = "")
+```
+
+## Sampling framework data for Hessequa Atlas Area
+
+Need to select data from years between 2015 and 2024
+Need to calculate number of full protocol sampling events
+Need to add a column with qdgc information
+
+Note: need to use the function get_qdgcCode() that I have written to convert decimal degree co-ordinates to qdgc
+
+```{r}
+# subset data to include years between 2015 and 2024
+HAASF<-HAASFraw %>% select(!(c('full proto':'2014','2025')))
+
+# calculate number of full sampling protocols per year
+HAASF<-HAASF %>%
+  rowwise() %>%
+  mutate(fullprotocol = sum(c_across('2015':'2024')))
+
+# get co-ordinates of points in each pentad
+HAASFcentroids <- st_centroid(HAASF)
+HAASFcoords<-st_coordinates(HAASFcentroids)
+
+HAASF$qdgccode<-apply(HAASFcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+```
+
+## Bird occurrence cube for Western Cape at QDGC
+
+Need to select data from years between 2015 and 2024
+Need to select data from QDGC that include Hessequa Atlas Area
+
+```{r}
+# subset cube to only include records between 2015 and 2024
+birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(year >= 2015 & year <=2024)
+
+# subset cube to only include records QDGC from Hessequa atlas area 
+
+HAAQDGC<-unique(HAASF$qdgccode) # QDGC in Hessequa atlas area
+
+birdcubeHAAYearQDGC <- birdcubeWCYearQDGC %>% filter(birdcubeWCYearQDGC$qdgccode %in% HAAQDGC)
+```
+
+## Bird occurrence cube for Western Cape at Pentad scale
+
+Need to select data from pentads that include Hessequa Atlas Area
+
+```{r}
+# subset cube to only include records from Hessequa atlas area
+birdcubeWCYearPentad <- birdcubeWCYearPentad %>% ungroup()
+birdcubeHAAYearPentad <- birdcubeWCYearPentad %>% filter(birdcubeWCYearPentad$pentad %in% Hpentads)
+```
+
+# Visualise data
+
+## At QDGC scale
+
+QDGC geometry is downloaded as a GeoPackage from https://zenodo.org/records/4457815.
+Download the file, unzip, and save it under *./data/raw*.
+
+Read in QDGC geometry
+
+```{r}
+# Read QDGC grid
+QDGC_sf <- read_sf(file.path(data_path, "qdgc_south africa", "qdgc_south africa.gpkg"), layer = "tbl_qdgc_02")
+
+# Explore dataframe
+glimpse(QDGC_sf)
+```
+
+### Sampling framework data for Hessequa Atlas Area
+
+```{r}
+# Remove geometry of sampling framework
+HAASFDF<-sf::st_drop_geometry(HAASF)
+
+# Add qdgc geometry of sampling framework by taking an inner join
+HAASFQDGC_sf <- QDGC_sf %>%
+  inner_join(HAASFDF %>%
+             group_by(qdgccode) %>%
+            summarise_at(vars('2015':'2024', 'fullprotocol'), sum, na.rm = TRUE),
+             by = join_by(qdgc==qdgccode)) %>%
+  st_sf(sf_column_name = "geom")
+            
+# Visualise spatial distribution of sampling framework
+QDGC_sf %>%
+ inner_join(HAASFDF,
+            group_by(qdgccode) %>%
+            summarise_at(vars('2015':'2024', 'fullprotocol'), sum, na.rm = TRUE), by = join_by(qdgc==qdgccode)) %>%
+  ggplot() +
+    geom_sf(aes(fill = fullprotocol), col = alpha("white", 0)) +
+    ggtitle("Quarter Degree Grid Cells Hessequa atlas area")
+```
+
+### SABAP 2 data for Hessequa Atlas Area
+
+```{r}
+# Add qdgc geometry by taking an inner join
+SABAP2HAAQDGC_sf <-  QDGC_sf %>%
+  inner_join(SABAP2HAA, by = join_by(qdgc==qdgccode)) %>%
+  st_sf(sf_column_name = "geom")
+
+# Visualise spatial distribution of structured data
+QDGC_sf %>%
+  inner_join(SABAP2HAA %>%
+              filter(occurrenceStatus == "PRESENT") %>%
+              distinct(occurrenceStatus, qdgccode),
+            by = join_by(qdgc==qdgccode)) %>%
+  ggplot() +
+    geom_sf(aes(fill = occurrenceStatus), col = alpha("white", 0)) +
+    ggtitle("Quarter Degree Grid Cells Hessequa atlas area")
+```
+
+### Bird occurrence cube for Western Cape at QDGC
+
+```{r}
+# Add qdgc geometry by taking an inner join
+birdcubeHAAYearQDGC_sf <- QDGC_sf %>%
+  inner_join(birdcubeHAAYearQDGC, by = join_by(qdgc==qdgccode)) %>%
+  st_sf(sf_column_name = "geom")
+```
+
+```{r}
+# Visualise spatial distribution data cube as number of species
+QDGC_sf %>%
+  inner_join(birdcubeHAAYearQDGC %>%
+              group_by(qdgccode) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop"),
+            by = join_by(qdgc==qdgccode)) %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("QDGC Bird cube data from Hessequa atlas area per year")
+```
+
+## At pentad scale
+
+### Sampling framework data for Hessequa Atlas Area
+
+```{r}
+# Visualise spatial distribution sampling framework
+HAASF %>%
+  ggplot() +
+    geom_sf(aes(fill = fullprotocol),
+            col = alpha("white", 0)) +
+    ggtitle("15 min grid cells Hessequa atlas area")
+```
+
+### SABAP 2 data for Hessequa Atlas Area
+
+```{r}
+# Add geometry of sampling framework by taking an inner join
+SABAP2HAAPentad_sf <- HAASF %>%
+  inner_join(SABAP2HAA, by = join_by(pentad)) %>%
+  st_sf(sf_column_name = "geometry")
+
+# Visualise spatial distribution of structured data
+HAASF %>%
+  left_join(SABAP2HAA %>%
+              filter(occurrenceStatus == "PRESENT") %>%
+              distinct(occurrenceStatus, pentad),
+            by = join_by(pentad)) %>%
+  ggplot() +
+    geom_sf(aes(fill = occurrenceStatus), col = alpha("white", 0)) +
+    ggtitle("15 min grid cells Hessequa atlas area")
+```
+
+### Bird occurrence cube for Western Cape at pentad scale
+
+```{r}
+# Add geometry of sampling framework by taking an inner join
+birdcubeHAAYearPentad_sf <- HAASF %>%
+  inner_join(birdcubeHAAYearPentad, by = join_by(pentad)) %>%
+  st_sf(sf_column_name = "geometry")
+```
+
+```{r}
+# Visualise spatial distribution data cube as number of species
+HAASF %>%
+  left_join(birdcubeHAAYearPentad %>%
+              group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop"),
+            by = join_by(pentad)) %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Pentad Bird cube data from Hessequa atlas area per year")
+```
+
+# Write out data
+
+We write out the data for exploration and analysis.
+
+```{r}
+out_path <- here::here("data", "interim")
+dir.create(out_path, showWarnings = FALSE, recursive = TRUE)
+
+# Structured data at QDGC scale
+write_sf(SABAP2HAAQDGC_sf,
+         file.path(out_path, "SABAP2_QDGC_HAA_data.gpkg"))
+write_sf(HAASFQDGC_sf,
+         file.path(out_path, "sampling_framework_SABAP2_QDGC.gpkg"))
+
+# Structured data at pentad scale
+write_sf(SABAP2HAAPentad_sf,
+         file.path(out_path, "SABAP2_Pentad_HAA_data.gpkg"))
+write_sf(HAASF,
+         file.path(out_path, "sampling_framework_SABAP2_pentad.gpkg"))
+
+# Unstructured data at QDGC scale
+write_sf(birdcubeHAAYearQDGC_sf,
+         file.path(out_path, "birdcube_QDGC_year_HAA.gpkg"))
+
+# Unstructured data at pentad scale
+write_sf(birdcubeHAAYearPentad_sf,
+         file.path(out_path, "birdcube_Pentad_year_HAA.gpkg"))
+```
