@@ -1,0 +1,574 @@
+---
+title: "Populate indicators using data for Hessequa Atlas Area"
+author: "Katelyn Faulkner"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Load packages
+library(tidyverse) # Data wrangling and visualisation
+library(here)      # Relative paths
+library(sf)        # Work with spatial data
+library(b3gbi)     # Indicators
+```   
+
+# Goal
+
+Populate indicators using structured data of the Hessequa systematic atlasing subproject of the “Southern African Bird Atlas Project 2” (SABAP2).
+
+Populate indicators using unstructured data of the Hessequa Atlas Area
+
+Structured and unstructured data were prepared at both QDGC and pentad scales. Analysis at both scales below
+
+# Load pentad scale data
+
+## Structured data
+
+The SABAP2 data were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Data path
+data_path <- here::here("data", "interim")
+```
+
+```{r}
+# Read SABAP2 Hessequa atlas area bird data (5min x 5 min/ 8.2 km x 8.2 km)
+SABAP2HAAinterim <- read_sf(file.path(data_path, "SABAP2_Pentad_HAA_data.gpkg"))
+
+# Explore dataframe
+glimpse(SABAP2HAAinterim)
+```
+
+## Unstructured data cube
+
+Unstructured data from GBIF were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read unstructured Hessequa atlas area bird data (5min x 5 min/ 8.2 km x 8.2 km)
+UnstrucHAAinterim <- read_sf(file.path(data_path, "birdcube_Pentad_year_HAA.gpkg"))
+
+# Explore dataframe
+glimpse(UnstrucHAAinterim)
+```
+
+# Prep data for indicators
+
+Structured data from SABAP2 for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. 
+
+It was noted that there were 2016 records where 'species' was NA. They were removed below.
+
+Also of note is that there is a delay in data feeding into GBIF, and so data for 2024, and most of 2023 is not included in the dataset
+
+```{r}
+# Drop geometry, removed records not identified to species level
+SABAP2HAAGeom <-  SABAP2HAAinterim %>%
+filter(!is.na(species)) 
+
+SABAP2HAA <-  SABAP2HAAGeom %>% st_drop_geometry() 
+
+# Group by species, year and pentad
+SABAP2HAAGrp <-SABAP2HAA %>% 
+   group_by(species, year, pentad, speciesKey) %>%
+    summarise(n = n())
+
+glimpse(SABAP2HAAGrp)
+```
+
+Unstructured data from GBIF for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. 
+
+Note delays in data feeding into GBIF mean that the data for 2024 is not complete. 
+
+There were also 50 species in the unstructured data that were not in the SABAP2 data. This was due to various issues, including missidentifications.
+
+```{r}
+# Remove geometry
+UnstrucHAA<- UnstrucHAAinterim %>%
+  st_drop_geometry()
+```
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2HAA$species) %>%
+  na.omit()
+
+UnstrucHAAsppGeom <- UnstrucHAAinterim %>%
+  filter(species %in% studied_spec)
+
+UnstrucHAAspp <- UnstrucHAAsppGeom %>%
+  st_drop_geometry()
+```
+
+
+# Indicators
+
+The indicators have been populated including/excluding species in unstructured data not included in SABAP2
+
+## Unstructured data
+
+### Period 2015-2024 (all species)
+
+```{r}
+# Process cube
+HAAunstruc <- process_cube(UnstrucHAA, grid_type = 'custom', first_year = '2015', cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateUncertaintyInMeters', cols_familyCount = 'familycount')
+```
+
+### Observed richness
+
+```{r, eval = FALSE}
+map_obs_rich_HAA <- obs_richness_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_HAA)
+```
+
+Above will not work as as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+
+```{r}
+UnstrucHAAinterim %>% group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Species richness Hessequa Atlas Area - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_map_obs_rich_HAA <- obs_richness_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_HAA)
+```
+
+### Number of records
+
+```{r, eval = FALSE}
+map_obs_HAA <- total_occ_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_HAA)
+```
+
+Above will not work as as grid (pentads) is custom, cannot map results but can look at change over time
+
+Below mapped records using other methods.
+
+```{r}
+UnstrucHAAinterim %>% group_by(pentad) %>%
+              summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Number of records Hessequa Atlas Area - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_obs_HAA <- total_occ_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_HAA)
+```
+
+### Period 2015-2024 (SABAP2 species)
+
+```{r}
+# Process cube
+HAAunstrucSpp <- process_cube(UnstrucHAAspp, grid_type = 'custom', first_year = '2015', cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateUncertaintyInMeters', cols_familyCount = 'familycount')
+```
+
+### Observed richness
+
+```{r, eval = FALSE}
+map_obs_rich_HAA <- obs_richness_map(HAAunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_HAA)
+```
+
+Above will not work as as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+
+```{r}
+UnstrucHAAsppGeom %>% group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Species richness Hessequa Atlas Area - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_map_obs_rich_HAA <- obs_richness_ts(HAAunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_HAA)
+```
+
+### Number of records
+
+```{r, eval = FALSE}
+map_obs_HAA <- total_occ_map(HAAunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_HAA)
+```
+
+Above will not work as as grid (pentads) is custom, cannot map results but can look at change over time
+
+Below mapped records using other methods.
+
+```{r}
+UnstrucHAAsppGeom %>% group_by(pentad) %>%
+              summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Number of records Hessequa Atlas Area - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_obs_HAA<- total_occ_ts(HAAunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_HAA)
+```
+
+## Structured SABAP2 data (2015-2024)
+
+```{r}
+# Process cube
+HAASABAP2 <- process_cube(SABAP2HAAGrp, grid_type = 'custom', first_year = '2015', cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n')
+```
+
+### Observed richness
+
+```{r, eval = FALSE}
+map_obs_rich_SABAP2 <- obs_richness_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_SABAP2)
+```
+
+Above will not work as as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+
+```{r}
+SABAP2HAAGeom %>% group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Species richness Hessequa Atlas Area - structured data at pentad resolution")
+```
+
+change over time
+
+```{r}
+ts_obs_rich_SABAP2 <- obs_richness_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_obs_rich_SABAP2)
+```
+
+### Number of records
+
+```{r, eval = FALSE}
+map_obs_SABAP2 <- total_occ_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_SABAP2)
+```
+
+Above will not work as as grid (pentads) is custom, cannot map results but can look at change over time
+
+Below mapped records using other methods.
+
+```{r}
+SABAP2HAAGeom %>% group_by(pentad) %>%
+              summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Number of records Hessequa Atlas Area - structured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_obs_SABAP2 <- total_occ_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_SABAP2)
+```
+
+# Load QDGC scale data
+
+## Structured data
+### Occurrence data
+
+The SABAP2 data were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read SABAP2 Hessequa atlas area bird data
+SABAP2HAAQDGCinterim <- read_sf(file.path(data_path, "SABAP2_QDGC_HAA_data.gpkg"))
+
+# Explore dataframe
+glimpse(SABAP2HAAQDGCinterim)
+```
+
+## Unstructured data cube
+
+Unstructured data from GBIF were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read unstructured Hessequa atlas area bird data
+UnstrucHAAQDGCinterim <- read_sf(file.path(data_path, "birdcube_QDGC_year_HAA.gpkg"))
+
+# Explore dataframe
+glimpse(UnstrucHAAQDGCinterim)
+```
+
+# Prep data for indicators
+
+Structured data from SABAP2 for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. These data have been converted to QDGC. 15 QDGC cover the area.
+
+It was noted that there were records where species was NA. They were removed below.
+
+There is also a delay for data into GBIF, so data for all of 2024 and most of 2023 not included in dataset.
+
+```{r}
+# Drop geometry, removed records not identified to species level
+SABAP2HAAQDGCGeom <-  SABAP2HAAQDGCinterim %>%
+  filter(!is.na(species)) 
+
+SABAP2HAAQDGC <-  SABAP2HAAQDGCGeom %>% st_drop_geometry() 
+
+# Group by species, year and pentad
+SABAP2HAAQDGCGrp <-SABAP2HAAQDGC %>% 
+   group_by(species, year, qdgc, speciesKey) %>%
+    summarise(n = n())
+
+glimpse(SABAP2HAAQDGCGrp)
+```
+
+Unstructured data from GBIF for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. These data have been converted to QDGC scale. There are 15 QDGC in the area.
+
+It was noted that there were a number of species included in the unstructured data that were not in the structured data. This was for a number of reasons including likely misidentifications.
+
+Due to delays in data flowing into GBIF the data for 2024 are not complete.
+
+```{r}
+# Remove NAs and geometry
+UnstrucHAAQDGC<- UnstrucHAAQDGCinterim %>%
+  st_drop_geometry()
+```
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2HAAQDGC$species) %>%
+  na.omit()
+
+UnstrucHAAQDGCsppGeom <- UnstrucHAAQDGCinterim %>%
+  filter(species %in% studied_spec)
+
+UnstrucHAAQDGCspp <- UnstrucHAAQDGCsppGeom %>%
+  st_drop_geometry()
+```
+
+
+# Indicators
+
+The indicators have been populated including/excluding species in unstructured data not included in SABAP2
+
+## Unstructured data
+
+### Period 2015-2024 (all species)
+
+```{r}
+# Process cube
+HAAunstrucQDGCproc <- process_cube(UnstrucHAAQDGC, grid_type = 'eqdgc', first_year = '2015', cols_year =  'year', cols_cellCode = 'qdgc', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateuncertaintyinmeters', cols_familyCount = 'familycount', cols_speciesKey = 'specieskey')
+```
+
+### Observed richness
+
+```{r}
+map_obs_rich_HAA_QDGC <- obs_richness_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_HAA_QDGC, title = "Observed Bird Species Richness")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped richness using other methods.
+
+```{r}
+UnstrucHAAQDGCinterim %>% group_by(qdgc) %>%
+  summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Species richness Hessequa Atlas Area - unstructured data at QDGC resolution")
+```
+
+
+Changes over time
+
+```{r}
+ts_map_obs_rich_HAA_QDGC <- obs_richness_ts(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_HAA_QDGC)
+```
+
+### Number of records
+
+```{r}
+map_obs_HAA_QDGC <- total_occ_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_HAA_QDGC, title = "Number of records")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+UnstrucHAAQDGCinterim %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Hessequa Atlas Area - unstructured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_HAA_QDGC <- total_occ_ts(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_HAA_QDGC)
+```
+
+
+### Period 2015-2024 (SABAP2 species)
+
+```{r}
+# Process cube
+HAAunstrucQDGCsppproc <- process_cube(UnstrucHAAQDGCspp, grid_type = 'eqdgc', first_year = '2015', cols_year =  'year', cols_cellCode = 'qdgc', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateuncertaintyinmeters', cols_familyCount = 'familycount', cols_speciesKey = 'specieskey')
+```
+
+### Observed richness
+
+```{r}
+map_obs_rich_HAA_QDGC <- obs_richness_map(HAAunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_HAA_QDGC, title = "Observed Bird Species Richness")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped richness using other methods.
+
+```{r}
+UnstrucHAAQDGCsppGeom %>% group_by(qdgc) %>%
+  summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Species richness Hessequa Atlas Area - unstructured data at QDGC resolution")
+```
+
+
+Changes over time
+
+```{r}
+ts_map_obs_rich_HAA_QDGC <- obs_richness_ts(HAAunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_HAA_QDGC)
+```
+
+### Number of records
+
+```{r}
+map_obs_HAA_QDGC <- total_occ_map(HAAunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_HAA_QDGC, title = "Number of records")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+UnstrucHAAQDGCsppGeom %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Hessequa Atlas Area - unstructured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_HAA_QDGC <- total_occ_ts(HAAunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_HAA_QDGC)
+```
+
+## Structured SABAP2 data
+
+```{r}
+# Process cube
+HAASABAP2QDGC <- process_cube(SABAP2HAAQDGCGrp, grid_type = 'eqdgc', first_year = '2015', cols_year =  'year', cols_cellCode = 'qdgc', cols_occurrences = 'n')
+```
+
+### Observed richness
+
+```{r}
+map_obs_rich_SABAP2_QDGC <- obs_richness_map(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_SABAP2_QDGC, title = "Observed Bird Species Richness")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+SABAP2HAAQDGCGeom %>% group_by(qdgc) %>%
+  summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Species richness Hessequa Atlas Area - structured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_rich_SABAP2_QDGC <- obs_richness_ts(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_obs_rich_SABAP2_QDGC)
+```
+
+### Number of records
+
+```{r}
+map_obs_SABAP2_QDGC <- total_occ_map(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_SABAP2_QDGC, title = "Number of records")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+SABAP2HAAQDGCGeom %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Hessequa Atlas Area - structured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_SABAP2_QDGC <- total_occ_ts(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_SABAP2_QDGC)
+```
