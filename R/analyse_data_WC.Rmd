@@ -1,0 +1,576 @@
+---
+title: "Populate indicators using data for Western Cape"
+author: "Katelyn Faulkner"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+# Load packages
+library(tidyverse) # Data wrangling and visualisation
+library(here)      # Relative paths
+library(sf)        # Work with spatial data
+library(b3gbi)     # Indicators
+```   
+
+# Goal
+
+Populate indicators using structured data of the Western Cape from the “Southern African Bird Atlas Project 2” (SABAP2).
+
+Populate indicators using unstructured data of the Western Cape
+
+Structured and unstructured data were prepared at both QDGC and pentad scales. Analysis at both scales below
+
+# Load pentad scale data
+
+## Structured data
+
+The SABAP2 data were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Data path
+data_path <- here::here("data", "interim")
+```
+
+```{r}
+# Read SABAP2 Western Cape bird data (5min x 5 min/ 8.2 km x 8.2 km)
+SABAP2WCinterim <- read_sf(file.path(data_path, "SABAP2_Pentad_WC_data.gpkg"))
+
+# Explore dataframe
+glimpse(SABAP2WCinterim)
+```
+
+## Unstructured data cube
+
+Unstructured data from GBIF were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read unstructured Western Cape bird data (5min x 5 min/ 8.2 km x 8.2 km)
+UnstrucWCinterim <- read_sf(file.path(data_path, "birdcube_Pentad_year_WC.gpkg"))
+
+# Explore dataframe
+glimpse(UnstrucWCinterim)
+```
+
+# Prepare data for indicators
+
+Structured data from SABAP2 for birds recorded in pentads of Western Cape (1842) between 2008 and 2024. 
+
+It was noted that there were 50316 records where 'species' was NA. They were removed below.
+
+Also of note is that there is a delay in data feeding into GBIF, and so data for 2024, and most of 2023 is not included in the dataset. 
+
+There also seems to be issues for the data for certain species feeding into GBIF (could be related to 50316 records above).
+
+```{r}
+# Drop geometry, removed records not identified to species level
+SABAP2WCGeom <-  SABAP2WCinterim %>%
+filter(!is.na(species)) 
+
+SABAP2WC <-  SABAP2WCGeom %>% st_drop_geometry() 
+
+# Group by species, year and pentad
+SABAP2WCGrp <-SABAP2WC %>% 
+   group_by(species, year, pentad, speciesKey) %>%
+    summarise(n = n())
+
+glimpse(SABAP2WCGrp)
+```
+
+Unstructured data from GBIF for birds recorded in pentads of Western Cape (1842) between 2008 and 2024. 
+
+Note delays in data feeding into GBIF mean that the data for 2024 is not complete. 
+
+There were several species in the unstructured data that were not in the SABAP2 data. This was due to various issues, including missidentifications, or potential issues with the data for these species feeding into GBIF.
+
+```{r}
+# Remove geometry
+UnstrucWC<- UnstrucWCinterim %>%
+  st_drop_geometry()
+```
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2WC$species) %>%
+  na.omit()
+
+UnstrucWCsppGeom <- UnstrucWCinterim %>%
+  filter(species %in% studied_spec)
+
+UnstrucWCspp <- UnstrucWCsppGeom %>%
+  st_drop_geometry()
+```
+
+
+# Indicators
+
+The indicators have been populated including/excluding species in unstructured data not included in SABAP2
+
+## Unstructured data
+
+### Period 2008-2024 (all species)
+
+```{r}
+# Process cube
+WCunstruc <- process_cube(UnstrucWC, grid_type = 'custom', first_year = '2008', cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateUncertaintyInMeters', cols_familyCount = 'familycount')
+```
+
+### Observed richness
+
+```{r, eval = FALSE}
+map_obs_rich_WC <- obs_richness_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_WC)
+```
+
+Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+
+```{r}
+UnstrucWCinterim %>% group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Species richness Western Cape - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_map_obs_rich_WC <- obs_richness_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_WC)
+```
+
+### Number of records
+
+```{r, eval = FALSE}
+map_obs_WC <- total_occ_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_WC)
+```
+
+Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
+
+Below mapped records using other methods.
+
+```{r}
+UnstrucWCinterim %>% group_by(pentad) %>%
+              summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Number of records Western Cape - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_obs_WC <- total_occ_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_WC)
+```
+
+### Period 2008-2024 (SABAP2 species)
+
+```{r}
+# Process cube
+WCunstrucSpp <- process_cube(UnstrucWCspp, grid_type = 'custom', first_year = '2008', cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateUncertaintyInMeters', cols_familyCount = 'familycount')
+```
+
+### Observed richness
+
+```{r, eval = FALSE}
+map_obs_rich_WC <- obs_richness_map(WCunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_WC)
+```
+
+Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+
+```{r}
+UnstrucWCsppGeom %>% group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Species richness Western Cape - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_map_obs_rich_WC <- obs_richness_ts(WCunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_WC)
+```
+
+### Number of records
+
+```{r, eval = FALSE}
+map_obs_WC <- total_occ_map(WCunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_WC)
+```
+
+Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
+
+Below mapped records using other methods.
+
+```{r}
+UnstrucWCsppGeom %>% group_by(pentad) %>%
+              summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Number of records Western Cape - unstructured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_obs_WC<- total_occ_ts(WCunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_WC)
+```
+
+## Structured SABAP2 data (2008-2024)
+
+```{r}
+# Process cube
+WCSABAP2 <- process_cube(SABAP2WCGrp, grid_type = 'custom', first_year = '2008', cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n')
+```
+
+### Observed richness
+
+```{r, eval = FALSE}
+map_obs_rich_SABAP2 <- obs_richness_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_SABAP2)
+```
+
+Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+
+```{r}
+SABAP2WCGeom %>% group_by(pentad) %>%
+              summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Species richness Western Cape - structured data at pentad resolution")
+```
+
+change over time
+
+```{r}
+ts_obs_rich_SABAP2 <- obs_richness_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_obs_rich_SABAP2)
+```
+
+### Number of records
+
+```{r, eval = FALSE}
+map_obs_SABAP2 <- total_occ_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_SABAP2)
+```
+
+Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
+
+Below mapped records using other methods.
+
+```{r}
+SABAP2WCGeom %>% group_by(pentad) %>%
+              summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+    geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+    scale_fill_viridis_c(option = "inferno") +
+    ggtitle("Number of records Western Cape - structured data at pentad resolution")
+```
+
+Change over time
+
+```{r}
+ts_obs_SABAP2 <- total_occ_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_SABAP2)
+```
+
+# Load QDGC scale data
+
+## Structured data
+### Occurrence data
+
+The SABAP2 data were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read SABAP2 Western Cape bird data
+SABAP2WCQDGCinterim <- read_sf(file.path(data_path, "SABAP2_QDGC_WC_data.gpkg"))
+
+# Explore dataframe
+glimpse(SABAP2WCQDGCinterim)
+```
+
+## Unstructured data cube
+
+Unstructured data from GBIF were prepared and stored as a geopackage file in *./data/interim*.
+
+We read in the dataset.
+
+```{r}
+# Read unstructured Western Cape bird data
+UnstrucWCQDGCinterim <- read_sf(file.path(data_path, "birdcube_QDGC_year_WC.gpkg"))
+
+# Explore dataframe
+glimpse(UnstrucWCQDGCinterim)
+```
+
+# Prepare data for indicators
+
+Structured data from SABAP2 for birds recorded in pentads of Western Cape between 2008 and 2024. These data have been converted to QDGC. 247 QDGC cover the area.
+
+It was noted that there were records where species was NA. They were removed below. There may be an issue with the data for certain species flowing into GBIF from SABAP2.
+
+There is also a delay for data to flow into GBIF, so data for all of 2024 and most of 2023 not included in dataset.
+
+```{r}
+# Drop geometry, removed records not identified to species level
+SABAP2WCQDGCGeom <-  SABAP2WCQDGCinterim %>%
+  filter(!is.na(species)) 
+
+SABAP2WCQDGC <-  SABAP2WCQDGCGeom %>% st_drop_geometry() 
+
+# Group by species, year and pentad
+SABAP2WCQDGCGrp <-SABAP2WCQDGC %>% 
+   group_by(species, year, qdgc, speciesKey) %>%
+    summarise(n = n())
+
+glimpse(SABAP2WCQDGCGrp)
+```
+
+Unstructured data from GBIF for birds recorded in pentads of Western Cape between 2008 and 2024. These data have been converted to QDGC scale. There are 247 QDGC in the area.
+
+It was noted that there were a number of species included in the unstructured data that were not in the structured data. This was for a number of reasons including likely misidentifications, and also as for some species SABAP2 data does not seem to be flowing to GBIF.
+
+Due to delays in data flowing into GBIF the data for 2024 are not complete.
+
+```{r}
+# Remove NAs and geometry
+UnstrucWCQDGC<- UnstrucWCQDGCinterim %>%
+  st_drop_geometry()
+```
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2WCQDGC$species) %>%
+  na.omit()
+
+UnstrucWCQDGCsppGeom <- UnstrucWCQDGCinterim %>%
+  filter(species %in% studied_spec)
+
+UnstrucWCQDGCspp <- UnstrucWCQDGCsppGeom %>%
+  st_drop_geometry()
+```
+
+
+# Indicators
+
+The indicators have been populated including/excluding species in unstructured data not included in SABAP2
+
+## Unstructured data
+
+### Period 2008-2024 (all species)
+
+```{r}
+# Process cube
+WCunstrucQDGCproc <- process_cube(UnstrucWCQDGC, grid_type = 'eqdgc', first_year = '2008', cols_year =  'year', cols_cellCode = 'qdgc', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateuncertaintyinmeters', cols_familyCount = 'familycount', cols_speciesKey = 'specieskey')
+```
+
+### Observed richness
+
+```{r}
+map_obs_rich_WC_QDGC <- obs_richness_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_WC_QDGC, title = "Observed Bird Species Richness")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped richness using other methods.
+
+```{r}
+UnstrucWCQDGCinterim %>% group_by(qdgc) %>%
+  summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Species richness Western Cape - unstructured data at QDGC resolution")
+```
+
+
+Changes over time
+
+```{r}
+ts_map_obs_rich_WC_QDGC <- obs_richness_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_WC_QDGC)
+```
+
+### Number of records
+
+```{r}
+map_obs_WC_QDGC <- total_occ_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_WC_QDGC, title = "Number of records")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+UnstrucWCQDGCinterim %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Western Cape - unstructured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_WC_QDGC <- total_occ_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_WC_QDGC)
+```
+
+
+### Period 2008-2024 (SABAP2 species)
+
+```{r}
+# Process cube
+WCunstrucQDGCsppproc <- process_cube(UnstrucWCQDGCspp, grid_type = 'eqdgc', first_year = '2008', cols_year =  'year', cols_cellCode = 'qdgc', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
+= 'mincoordinateuncertaintyinmeters', cols_familyCount = 'familycount', cols_speciesKey = 'specieskey')
+```
+
+### Observed richness
+
+```{r}
+map_obs_rich_WC_QDGC <- obs_richness_map(WCunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_WC_QDGC, title = "Observed Bird Species Richness")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped richness using other methods.
+
+```{r}
+UnstrucWCQDGCsppGeom %>% group_by(qdgc) %>%
+  summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Species richness Western Cape - unstructured data at QDGC resolution")
+```
+
+
+Changes over time
+
+```{r}
+ts_map_obs_rich_WC_QDGC <- obs_richness_ts(WCunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_map_obs_rich_WC_QDGC)
+```
+
+### Number of records
+
+```{r}
+map_obs_WC_QDGC <- total_occ_map(WCunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_WC_QDGC, title = "Number of records")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+UnstrucWCQDGCsppGeom %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Western Cape - unstructured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_WC_QDGC <- total_occ_ts(WCunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_WC_QDGC)
+```
+
+## Structured SABAP2 data
+
+```{r}
+# Process cube
+WCSABAP2QDGC <- process_cube(SABAP2WCQDGCGrp, grid_type = 'eqdgc', first_year = '2008', cols_year =  'year', cols_cellCode = 'qdgc', cols_occurrences = 'n')
+```
+
+### Observed richness
+
+```{r}
+map_obs_rich_SABAP2_QDGC <- obs_richness_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_rich_SABAP2_QDGC, title = "Observed Bird Species Richness")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+SABAP2WCQDGCGeom %>% group_by(qdgc) %>%
+  summarise(n_species = n_distinct(species), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Species richness Western Cape - structured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_rich_SABAP2_QDGC <- obs_richness_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
+plot(ts_obs_rich_SABAP2_QDGC)
+```
+
+### Number of records
+
+```{r}
+map_obs_SABAP2_QDGC <- total_occ_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(map_obs_SABAP2_QDGC, title = "Number of records")
+```
+
+Plots, but oddly. Possible issue with grid package uses. 
+
+Below mapped number of records using other methods.
+
+```{r}
+SABAP2WCQDGCGeom %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Western Cape - structured data at QDGC resolution")
+```
+
+Changes over time
+
+```{r}
+ts_obs_SABAP2_QDGC <- total_occ_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+plot(ts_obs_SABAP2_QDGC)
+```
