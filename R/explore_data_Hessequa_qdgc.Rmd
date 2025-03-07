@@ -33,7 +33,7 @@ Explore structured data of the Hessequa systematic atlasing subproject of the â€
 
 Explore unstructured data from GBIF for the same area.
 
-Structured and unstructured data were prepared at both quarter degree grid cell (QDGC) and pentad (5 min x 5 min) scales, but only qdgc scale data is explored and analysed below.
+Structured and unstructured data were prepared at both quarter degree grid cell (QDGC) and pentad (5 min x 5 min) scales, but only QDGC scale data is explored and analysed below.
 
 QDGC is not ideal for data exploration and comparison, as the pentads in Hessequa Altas Area do not fully cover all the QDGC in which they fall. Therefore although at the same resolution, the structured and unstructured data do not overlap perfectly.
 
@@ -53,7 +53,7 @@ data_path <- here::here("data", "interim")
 ```
 
 ```{r}
-# Read SABAP2 Hessequa atlas area sampling framework (qdgc)
+# Read SABAP2 Hessequa atlas area sampling framework (QDGC)
 HAASF <- read_sf(file.path(data_path, "sampling_framework_SABAP2_QDGC.gpkg"))
 
 # Explore dataframe
@@ -67,7 +67,7 @@ The SABAP2 data were prepared and stored as a geopackage file in *./data/interim
 We read in the dataset.
 
 ```{r}
-# Read SABAP2 Hessequa atlas area bird data (qdgc)
+# Read SABAP2 Hessequa atlas area bird data (QDGC)
 SABAP2HAAinterim <- read_sf(file.path(data_path, "SABAP2_QDGC_HAA_data.gpkg"))
 
 # Explore dataframe
@@ -82,7 +82,7 @@ Unstructured data from GBIF were prepared and stored as a geopackage file in *./
 We read in the dataset.
 
 ```{r}
-# Read in unstructured Hessequa atlas area bird data (qdgc)
+# Read in unstructured Hessequa atlas area bird data (QDGC)
 UnstrucHAAinterim <- read_sf(file.path(data_path, "birdcube_QDGC_year_HAA.gpkg"))
 
 # Explore dataframe
@@ -103,9 +103,9 @@ The Hessequa Atlas Area is a ~110 x 55 km area near Stillbaai in the Western Cap
 
 The downloaded sampling framework data contains 77 grid cells (the extras are 3420_2055 and 3415_2140).
 
-The data explored here have been prepared at quarter-degree grid cell (QDGC) resolution - 9 pentads fit into a QDGC. 
+The data explored here have been prepared at quarter degree grid cell (QDGC) resolution - 9 pentads fit into a QDGC. 
 
-In the bird record data, it was noted that there were 2016 records where 'species; was NA. Further investigation (examination of scientificName) indicated that these records were not identified to species level and were for:
+In the bird record data, it was noted that there were 2016 records where 'species' was NA. Further investigation (examination of scientificName) indicated that these records were not identified to species level and were for:
 
 "Zosterope": a synonym according to GBIF of Zosterops Vigors & Horsfield, 1827
 
@@ -117,7 +117,7 @@ In the bird record data, it was noted that there were 2016 records where 'specie
 
 "Anas Linnaeus, 1758"  
 
-These records were removed for the analysis
+These records were removed for the analysis. But note there are species missing in this dataset that fall under these genera (see below).
 
 ## Survey data
 
@@ -170,7 +170,7 @@ HAASFprep %>%
 Number of surveys varies across years, and is between 200 and 330 surveys per year. No specific trend over time.
 
 ```{r}
-# Number of surveys per qdgc
+# Number of surveys per QDGC
 HAASFprep %>%
   group_by(qdgc) %>%
     summarise(n = sum(count)) %>%
@@ -185,7 +185,7 @@ Number of surveys varies across the QDGC, one with > 600 surveys, five QDGC had 
 ## Bird data
 
 ```{r}
-# Drop geometry, removed records not identified to species level, classify commonness, and group years. Used two year internals, as increase in iNat from 2021
+# Drop geometry, removed records not identified to species level, classify commonness, and group years. Used two year internals
 SABAP2HAA <-SABAP2HAAinterim %>% st_drop_geometry() %>%
 filter(!is.na(species)) %>%
   mutate(cyclus = case_when(
@@ -323,12 +323,12 @@ Weaker correlation between number of surveys and number of species
 
 # Explore Unstructured data cube for Hessequa Atlas Area
 
-Unstructured data from GBIF for birds recorded in qdgc of Hessequa Atlas Area between 2015 and 2024. 
+Unstructured data from GBIF for birds recorded in QDGC of Hessequa Atlas Area between 2015 and 2024. 
 
 This cube was obtained through rgbif
 
 ```{r}
-# Remove NAs and geometry and group years. Used two year internals, as increase in iNat from 2021
+# Remove geometry and group years. Used two year internals
 UnstrucHAA<- UnstrucHAAinterim %>%
   st_drop_geometry() %>%
   mutate(cyclus = case_when(
@@ -416,7 +416,7 @@ UnstrucHAA %>%
        y = "Number of quarter-degree grid cells")
 ```
 
-Number of species varies across QDGC. One QDGQC with > 250 species, and a few with < 100, most > 125 species
+Number of species varies across QDGC. One QDGC with > 250 species, and a few with < 100, most > 125 species
 
 # Comparing structured and unstructured data (2015-2024)
 
@@ -496,35 +496,33 @@ group_by(species) %>%
 
 There are 64 species in the unstructured data that are not in the SABAP2 data. For 50 of these species there are < 20 records. For the 14 species for which there are > 20 records, the details are below. However, of these 14, while a few are likely to occur in the area, a number seem to be missidentfications or there are multiple accepted species names in GBIF. Note the SABAP2 data does go through quality control. All comparisons below are based on the species in SABAP2.
 
-- Tychaedon coryphoeus (Karoo scrub-robin) (29 records): Two accepted species names in GBIF (Tychaedon coryphoeus (Lesson, 1831) and Erythropygia coryphoeus (Vieillot, 1817)). Appears in SABAP2 under Erythropygia coryphoeus.
+- *Tychaedon coryphoeus* (Karoo scrub-robin) (29 records): Two accepted species names in GBIF (*Tychaedon coryphoeus* (Lesson, 1831) and *Erythropygia coryphoeus* (Vieillot, 1817)). Appears in SABAP2 under *Erythropygia coryphoeus*.
 
-- Acrocephalus scirpaceus (common reed warbler) (32 records). This species is a rare summer visitor with few records in southern Africa. Possible missidentifications. There are two warblers in the SABAP2 data: Acrocephalus baeticatus (African Reed warbler) and Acrocephalus gracilirostris (marsh warbler)
+- *Acrocephalus scirpaceus* (common reed warbler) (32 records). This species is a rare summer visitor with few records in southern Africa. Possible missidentifications.
 
-- Anthus nicholsoni (Nicholson's Pipit) (33 records): Also an accepted species name in GBIF is Anthus similis (Jerdon, 1840), for which the common names are Long-billed pipit (in English) and Nicholsonkoester (in Afrikaans).  Anthus similis is in the SABAP2 data.
+- *Anthus nicholsoni* (Nicholson's Pipit) (33 records): Also an accepted species name in GBIF is *Anthus similis* (Jerdon, 1840), for which the common names are Long-billed pipit (in English) and Nicholsonkoester (in Afrikaans).  *Anthus similis* is in the SABAP2 data.
 
-- Phoenicopterus roseus (greater flamingo) (44 records): As with lesser flamingo is a local visitor. Lesser flamingo (Phoeniconaias minor) is in SABAP2
+- *Phoenicopterus roseus* (greater flamingo) (44 records): As with lesser flamingo is a local visitor. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- Dessonornis caffer (Cape Robin-Chat) (48 records): Cape Robin-Chat appears to have two accepted species names in GBIF (Cossypha caffra (Linnaeus, 1771) and Dessonornis caffer (Linnaeus, 1771)). It is under Cossypha caffra in SABAP2.
+- *Dessonornis caffer* (Cape Robin-Chat) (48 records): Cape Robin-Chat appears to have two accepted species names in GBIF (*Cossypha caffra* (Linnaeus, 1771) and *Dessonornis caffer* (Linnaeus, 1771)). It is under *Cossypha caffra* in SABAP2.
 	
-- Macronyx capensis (Cape Longclaw) (63 records): Area does appear to be part of range
+- *Macronyx capensis* (Cape Longclaw) (63 records): Area does appear to be part of range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- Milvus migrans (Black kite) (131 records): A summer visitor mostly to the north of the country. Possible missidentifications? Can be confused with Yellow-billed kite (Milvus aegyptius), which is included in SABAP2
+- *Milvus migrans* (Black kite) (131 records): A summer visitor mostly to the north of the country. Possible missidentifications? Can be confused with Yellow-billed kite (*Milvus aegyptius*), which is included in SABAP2
 
-- Psalidoprocne pristoptera (black saw-wing) (176 records): area is within its range
+- *Psalidoprocne pristoptera* (black saw-wing) (176 records): area is within its range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
+- *Upupa epops* (Hoopoe) (199 records): two accepted species names in GBIF (*Upupa epops* Linnaeus, 1758 and *Upupa africana* Bechstein, 1811). The species appears under the name *Upupa africana* in SABAP2 data.
 
-- Upupa epops (Hoopoe) (199 records): two accepted species names in GBIF (Upupa epops Linnaeus, 1758 and Upupa africana Bechstein, 1811). The species appears under the name Upupa africana in SABAP2 data.
+- *Buteo buteo* (buzzard) (221 records): A summer visitor, but it is very similar to Buteo trizonatus (difficult to tell a part), which is a resident in the area, and is in the SABAP2 data. Possible missidentifications? Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- Buteo buteo (buzzard) (221 records): A summer visitor, but it is very similar to Buteo trizonatus (difficult to tell a part), which is a resident in the area, and is in the SABAP2 data. Possible missidentifications?
+- *Phalacrocorax carbo* (common cormorant) (224 records): possible misidentification. Maybe being confused with *Phalacrocorax capensis* (cape cormorant), which does occur in the area and is in the SABAP2 data.
 
-- Phalacrocorax carbo (common cormorant) (224 records): possible misidentification. Maybe being confused with Phalacrocorax capensis (cape cormorant), which does occur in the area and is in the SABAP2 data.
+- *Certhilauda curvirostris* (Cape Lark) (248 records): Range restricted species, which does not occur in the area. Possible missidentifications? Maybe confused with *Certhilauda brevirostris* (Agulhas lark), which does occur in this area, and is included in the SABAP2 data.
 
-- Certhilauda curvirostris (Cape Lark) (248 records): Range rescricted species, which does not occur in the area. Possible missidentifications? Maybe confused with 	
-Certhilauda brevirostris (Agulhas lark), which does occur in this area, and is included in the SABAP2 data.
+- *Euplectes capensis* (yellow bishop) (270 records): area is in range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- Euplectes capensis (yellow bishop) (270 records): area is in range
-
-- Zosterops virens (Cape white-eye) (613 records): two accepted name in GBIF (Zosterops virens Sundevall, 1850 and Zosterops capensis Sundevall, 1850). Area is in range, but it appears under neither name in SABAP2 data.
+- *Zosterops virens* (Cape white-eye) (613 records): two accepted names in GBIF (*Zosterops virens* Sundevall, 1850 and *Zosterops capensis* Sundevall, 1850). Area is in range, but it appears under neither name in SABAP2 data. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
 ## Range overlap
 
@@ -609,7 +607,7 @@ comp_range_data %>%
                               "percentage_birdcube_spec_sabap2"), digits = 2)
 ```
 
-This table shows the number of sabap2 squares where a species was observed, the percentage of total sabap2 squares, the number of cube squares were the species was observed, the percentage of all cube squares, the number of sabap2 squares where the species was observed based on the birdcube data, the percentage compared to all sabap2 squares, the number of squares occupied by the species in both the sabap2 and birdcube data and the percentage of this compared to the number of squares occupied by this species in the sabap2 data.
+This table shows the number of sabap2 grid cells (squares) where a species was observed, the percentage of total sabap2 grid cells, the number of cube grid cells were the species was observed, the percentage of all cube grid cells, the number of sabap2 grid cells where the species was observed based on the birdcube data, the percentage compared to all sabap2 grid cells, the number of grid cells occupied by the species in both the sabap2 and birdcube data and the percentage of this compared to the number of grid cells occupied by this species in the sabap2 data.
 
 ```{r}
 # summary of output
@@ -632,7 +630,7 @@ comp_range_data %>%
 Most species have over 50% range overlap. All species with very low range overlap are very rare or rare. All very common species have a range overlap of > 75%.
 
 ```{r}
-# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage overlapping cells in cube
+# Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage overlapping cells in cube
 comp_range_data %>%
   inner_join(SABAP2HAA %>% distinct(species, category),
             by = join_by(studied_spec == species)) %>%
@@ -644,10 +642,10 @@ comp_range_data %>%
            method = "pearson")
 ```
 
-If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is strongly positively correlated to the percentage squares in which there is overlap between the sabap2 records and cube records.
+If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is strongly positively correlated to the percentage grid cells in which there is overlap between the sabap2 records and cube records.
 
 ```{r}
-# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
+# Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
 comp_range_data %>%
   inner_join(SABAP2HAA %>% distinct(species, category),
             by = join_by(studied_spec == species)) %>%
@@ -659,7 +657,7 @@ comp_range_data %>%
            method = "pearson")
 ```
 
-If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. 
+If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. 
 
 ```{r}
 # same plot as previous, but not including rare and very rare species
@@ -675,7 +673,7 @@ comp_range_data %>%
            method = "pearson")
 ```
 
-For common and very common species (rare excluded) - If we look at the graph it appears that of the SABAP2 squares the percentage of squares in which a species is observed in SABAP2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. The correlation in weaker than when rare species are included.
+For common and very common species (rare excluded) - If we look at the graph it appears that of the SABAP2 grid cells the percentage of grid cells in which a species is observed in SABAP2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. The correlation in weaker than when rare species are included.
 
 ## Range overlap over time
 
@@ -730,7 +728,7 @@ comp_range_data2 %>%
              scales = "free_y")
 ```
 
-The positive correlation between percentage squares in SABAP2 data and cube holds if we look at different time periods. Time period 1 = 2015 and 2016, time period 2 = 2017 and 2018, time period 3 = 2019 and 2020, time period 4 = 2021 and 2022, and time period 5 = 2023 and 2024. Note the results from 2023/2024 look odd as very little SABAP2 data submitted to GBIF for this period, and unstructured data is also reduced for 2024.
+The positive correlation between percentage grid cells in SABAP2 data and cube holds if we look at different time periods. Time period 1 = 2015 and 2016, time period 2 = 2017 and 2018, time period 3 = 2019 and 2020, time period 4 = 2021 and 2022, and time period 5 = 2023 and 2024. Note the results from 2023/2024 look odd as very little SABAP2 data submitted to GBIF for this period, and unstructured data is also reduced for 2024.
 
 ```{r}
 # plot percentage range overlap for each period
@@ -803,8 +801,6 @@ commonOverlap %>%
 
 Of the 310 species in the SABAP2 data (all appear in the period from 2015 to 2022), 286 are in the unstructured data (92%). Of the 286, 55 are very rare, 75 are rare, 123 are common, and 33 very common. Of the 24 species in SABAP2 that are missing from the unstructured data 19 are very rare, 5 are rare, and none are common or very common. The percentage of species recorded in the unstructured data increased with commonness: 74% of very rare species were recorded, 94% of rare species were recorded, 100% of common and very common species were recorded.
 
-A few more species (6) are missing from the unstructured data for this time period (i.e., excluding 2023 and 2024)
-
 ```{r}
 # calculate number and percentage of species in unstructured data that are in SABAP2
 SppOverlapIndSub2<-which(studied_spec %in% UnstrucHAASub$species)
@@ -831,7 +827,7 @@ group_by(species) %>%
        y = "Number of species")
 ```
 
-There are 54 species in the unstructured data that are not in the SABAP2 data. For 41 of these species there are < 20 records. For the 13 species for which there are > 20 records, the details are below. These 13 species are discussed above (they were all missing in the 2015-2024 data too). All comparisons below are based on the species in SABAP2.
+There are 54 species in the unstructured data that are not in the SABAP2 data. For 41 of these species there are < 20 records. For the 13 species for which there are > 20 records. These 13 species are discussed above (they were all missing in the 2015-2024 data too). All comparisons below are based on the species in SABAP2.
 
 ## Range overlap
 
@@ -916,7 +912,7 @@ comp_range_data %>%
                               "percentage_birdcube_spec_sabap2"), digits = 2)
 ```
 
-This table shows the number of sabap2 squares where a species was observed, the percentage of total sabap2 squares, the number of cube squares were the species was observed, the percentage of all cube squares, the number of sabap2 squares where the species was observed based on the birdcube data, the percentage compared to all sabap2 squares, the number of squares occupied by the species in both the sabap2 and birdcube data and the percentage of this compared to the number of squares occupied by this species in th sabap2 data.
+This table shows the number of sabap2 grid cells where a species was observed, the percentage of total sabap2 grid cells, the number of cube grid cells were the species was observed, the percentage of all cube grid cells, the number of sabap2 grid cells where the species was observed based on the birdcube data, the percentage compared to all sabap2 grid cells, the number of grid cells occupied by the species in both the sabap2 and birdcube data and the percentage of this compared to the number of grid cells occupied by this species in th sabap2 data.
 
 ```{r}
 # summary of output
@@ -938,7 +934,7 @@ comp_range_data %>%
 Most species have ~ 50% or above percentage overlap. All very common species have percentage range overlap of > 60%, while all species with very low % range overlap are very rare or rare.
 
 ```{r}
-# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage overlapping cells in cube
+# Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage overlapping cells in cube
 comp_range_data %>%
   inner_join(SABAP2HAASub %>% distinct(species, category),
             by = join_by(studied_spec == species)) %>%
@@ -950,10 +946,10 @@ comp_range_data %>%
            method = "pearson")
 ```
 
-If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is strongly positively correlated to the percentage squares in which there is overlap between the sabap2 records and cube records. 
+If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is strongly positively correlated to the percentage grid cells in which there is overlap between the sabap2 records and cube records. 
 
 ```{r}
-# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
+# Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
 comp_range_data %>%
   inner_join(SABAP2HAASub %>% distinct(species, category),
             by = join_by(studied_spec == species)) %>%
@@ -965,10 +961,10 @@ comp_range_data %>%
            method = "pearson")
 ```
 
-If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is strongly positively correlated to the percentage squares in which a species is recorded in the unstructured data. 
+If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is strongly positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. 
 
 ```{r}
-# Plot percentage of SABAP2 squares in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data (common and very common species only)
+# Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data (common and very common species only)
 comp_range_data %>%
   inner_join(SABAP2HAASub %>% distinct(species, category),
             by = join_by(studied_spec == species)) %>%
@@ -981,7 +977,7 @@ comp_range_data %>%
            method = "pearson")
 ```
 
-For common and very common species (rare excluded) - If we look at the graph it appears that of the sabap2 squares the percentage of squares in which a species is observed in sabap2 is positively correlated to the percentage squares in which a species is recorded in the unstructured data. But the correlation is stronger when all species are included.
+For common and very common species (rare excluded) - If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. But the correlation is stronger when all species are included.
 
 # Trend analysis
 
@@ -1022,7 +1018,7 @@ ggplot(aes(x = correlation)) +
        y = "Number of species")
 ```
 
-Graph shows for each species the degree to which the number of records over time in SABAP2 correlates with number of records in unstructured dataset. The strength and direction of the correlation varies significantly between species, but for most is strongly negative.
+Graph shows for each species the degree to which the number of records over time in SABAP2 correlates with the number of records in the unstructured dataset. The strength and direction of the correlation varies significantly between species, but for most is strongly negative.
 
 ```{r}
 # No records per time-period per species
@@ -1072,7 +1068,7 @@ ggplot(aes(x = correlation)) +
        y = "Number of species")
 ```
 
-Graph shows for each species the degree to which the number of records over time (based on time periods) in SABAP2 correlates with number of records in unstructured dataset. The strength and direction of the correlation varies between species, and for 38 species the correlation is NA. But, for > 20 species correlation = 1.
+Graph shows for each species the degree to which the number of records over time (based on time periods) in SABAP2 correlates with number of records in unstructured dataset. The strength and direction of the correlation varies between species, and for 38 species the correlation is NA. But, for > 20 species correlation > 0.9.
 
 ```{r}
 # summarise correlations per commonness group
@@ -1235,14 +1231,14 @@ Kappa value = 0.0553 so there is a 'poor' agreement in trends in number of recor
 # Occupancy rate comparrison
 
 ```{r}
-# Give '1' to the squares each species is recorded in SABAP2
+# Give '1' to the grid cells each species is recorded in SABAP2
 occupancy_1 <- SABAP2HAA %>%
   group_by(species, qdgc) %>%
   summarize(occupancy_rate_1 = mean(occurrenceStatus == "PRESENT"))
 ```
 
 ```{r}
-# Give '1' to the squares each species is recorded in unstructured data
+# Give '1' to the grid cells each species is recorded in unstructured data
 occupancy_2 <- UnstrucHAA %>%
   group_by(species, qdgc) %>%
   summarize(occupancy_rate_2 = 1) 
@@ -1316,7 +1312,7 @@ species_composition_2<-species_composition_2[colnames(species_composition_1)]
 #Bray curtis
 bray_curtis <- vegan::vegdist(rbind(species_composition_1[-1],
                              species_composition_2[-1]), method = "bray")
-bray_curtis # 0.49... very different
+bray_curtis #
 ```
 
 Bray curtis index of 0.49 indicates intermediately dissimilar species composition
