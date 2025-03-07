@@ -67,13 +67,15 @@ UnstrucHAAinterim <- read_sf(file.path(data_path, "birdcube_Pentad_year_HAA.gpkg
 glimpse(UnstrucHAAinterim)
 ```
 
-# Prep data for indicators
+# Prepare data for indicators
 
 Structured data from SABAP2 for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. 
 
 It was noted that there were 2016 records where 'species' was NA. They were removed below.
 
-Also of note is that there is a delay in data feeding into GBIF, and so data for 2024, and most of 2023 is not included in the dataset
+Also of note is that there is a delay in data feeding into GBIF, and so data for 2024, and most of 2023 is not included in the dataset.
+
+There also seems to be issues for the data for certain species feeding into GBIF (could be related to 2016 records above).
 
 ```{r}
 # Drop geometry, removed records not identified to species level
@@ -94,7 +96,7 @@ Unstructured data from GBIF for birds recorded in pentads of Hessequa Atlas Area
 
 Note delays in data feeding into GBIF mean that the data for 2024 is not complete. 
 
-There were also 50 species in the unstructured data that were not in the SABAP2 data. This was due to various issues, including missidentifications.
+There were also 50 species in the unstructured data that were not in the SABAP2 data. This was due to various issues, including missidentifications, or potential issues with the data for these species feeding into GBIF.
 
 ```{r}
 # Remove geometry
@@ -136,7 +138,7 @@ map_obs_rich_HAA <- obs_richness_map(HAAunstruc, cell_size = 0.08333333, level =
 plot(map_obs_rich_HAA)
 ```
 
-Above will not work as as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
 
 ```{r}
 UnstrucHAAinterim %>% group_by(pentad) %>%
@@ -161,7 +163,7 @@ map_obs_HAA <- total_occ_map(HAAunstruc, cell_size = 0.08333333, level = "cube",
 plot(map_obs_HAA)
 ```
 
-Above will not work as as grid (pentads) is custom, cannot map results but can look at change over time
+Above will not work as grid (pentads) is custom, cannot map results.
 
 Below mapped records using other methods.
 
@@ -196,7 +198,7 @@ map_obs_rich_HAA <- obs_richness_map(HAAunstrucSpp, cell_size = 0.08333333, leve
 plot(map_obs_rich_HAA)
 ```
 
-Above will not work as as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
 
 ```{r}
 UnstrucHAAsppGeom %>% group_by(pentad) %>%
@@ -221,7 +223,7 @@ map_obs_HAA <- total_occ_map(HAAunstrucSpp, cell_size = 0.08333333, level = "cub
 plot(map_obs_HAA)
 ```
 
-Above will not work as as grid (pentads) is custom, cannot map results but can look at change over time
+Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
 
 Below mapped records using other methods.
 
@@ -255,7 +257,7 @@ map_obs_rich_SABAP2 <- obs_richness_map(HAASABAP2, cell_size = 0.08333333, level
 plot(map_obs_rich_SABAP2)
 ```
 
-Above will not work as as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
+Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
 
 ```{r}
 SABAP2HAAGeom %>% group_by(pentad) %>%
@@ -280,7 +282,7 @@ map_obs_SABAP2 <- total_occ_map(HAASABAP2, cell_size = 0.08333333, level = "cube
 plot(map_obs_SABAP2)
 ```
 
-Above will not work as as grid (pentads) is custom, cannot map results but can look at change over time
+Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
 
 Below mapped records using other methods.
 
@@ -331,11 +333,11 @@ UnstrucHAAQDGCinterim <- read_sf(file.path(data_path, "birdcube_QDGC_year_HAA.gp
 glimpse(UnstrucHAAQDGCinterim)
 ```
 
-# Prep data for indicators
+# Prepare data for indicators
 
 Structured data from SABAP2 for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. These data have been converted to QDGC. 15 QDGC cover the area.
 
-It was noted that there were records where species was NA. They were removed below.
+It was noted that there were records where species was NA. They were removed below. There may be an issue with the data for certain species flowing into GBIF from SABAP2.
 
 There is also a delay for data into GBIF, so data for all of 2024 and most of 2023 not included in dataset.
 
@@ -356,7 +358,7 @@ glimpse(SABAP2HAAQDGCGrp)
 
 Unstructured data from GBIF for birds recorded in pentads of Hessequa Atlas Area (77) between 2015 and 2024. These data have been converted to QDGC scale. There are 15 QDGC in the area.
 
-It was noted that there were a number of species included in the unstructured data that were not in the structured data. This was for a number of reasons including likely misidentifications.
+It was noted that there were a number of species included in the unstructured data that were not in the structured data. This was for a number of reasons including likely misidentifications, and also as for some species SABAP2 data does not seem to be flowing to GBIF.
 
 Due to delays in data flowing into GBIF the data for 2024 are not complete.
 
