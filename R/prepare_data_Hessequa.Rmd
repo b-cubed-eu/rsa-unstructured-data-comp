@@ -32,7 +32,7 @@ Load and save unstructured data from GBIF.
 
 SABAP2 data are collected at a pentad resolution (5min x 5min).
 
-The data are prepared both at a pentad resolution, and at quarter-degree grid cell resolution. 9 pentads fit into one quarter degree grid cell (15 min x 15 min)
+The data are prepared both at a pentad resolution, and at quarter degree grid cell resolution. 9 pentads fit into one quarter degree grid cell (15 min x 15 min)
 
 The period 2015-2024 is of interest
 
@@ -65,7 +65,7 @@ glimpse(HAASFraw)
 ### Occurrence data
 
 Occurrence data was downloaded from GBIF.org.
-Unzip and store folders under *./data/raw*.
+Unzip and store folder under *./data/raw*.
 The SABAP2 dataset was filtered so that only data from the Western Cape (Administrative areas = Western Cape - ZAF.9_1) was downloaded
 
 **SABAP2 - Southern African Bird Atlas Project 2**: 0000102-240626123714530.zip
@@ -91,15 +91,15 @@ glimpse(SABAP2WCraw)
 
 ### Download cube (qdgc per year)
 
-Retrieved the species occurrence cubes using rgbif. 
-The occurrence cube on a qdgc scale per year.
+Retrieved a species occurrence cube using rgbif. 
+The occurrence cube is at QDGC scale per year.
 To account for sampling bias, the specification recommends including an occurrence count for a higher taxon, typically the family.
 
 The query excluded SABAP2 data
 
 Data for the Western Cape were selected (level1Gid = 'ZAF.9_1')
 
-Note personal details (usernname, password and email address) have been removed from script below
+Note, personal details (usernname, password and email address) have been removed from script below
 
 ```{r, eval = FALSE}
 # yearly cube at qdgc resolution
@@ -143,9 +143,7 @@ glimpse(birdcubeWCYearQDGC)
 
 ### Download occurrence data and create cube (pentad per year)
 
-Cube at pentad resolution not available through rgbif. 
-
-Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution.
+Cube at pentad resolution not available through rgbif. Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution.
 
 Occurrence data is downloaded from GBIF.org. Unzip and store folders under *./data/raw*.
 
@@ -228,7 +226,7 @@ glimpse(birdcubeWCYearPentad)
 
 # Subset datasets 
 
-Select Hessequa grid cells, data falling into correct time period (2015-2024), and where full protocol was used for surveys (i.e., adhoc records in SABAP2 are removed)
+Select Hessequa Atlas Area grid cells, data falling into correct time period (2015-2024), and where full protocol was used for surveys (i.e., adhoc records in SABAP2 are removed)
 
 ## SABAP2 data for Western Cape
 
@@ -236,11 +234,11 @@ Select cells that fall into Hessequa Atlas Area
 
 Select data from years between 2015 and 2024
 
-Select records from events where full sampling protocol followed (i.e., adhoc sampling removed)
+Select records from events where full sampling protocol was followed (i.e., adhoc sampling removed)
 
 Create a column called 'pentad'
 
-Add a column with qdgc information
+Add a column with QDGC information
 
 ```{r}
 # subset data to include years between 2015 and 2024
@@ -271,7 +269,7 @@ Select data from years between 2015 and 2024
 
 Calculate number of full protocol sampling events
 
-Add a column with qdgc information. Need to use a function get_qdgcCode() to convert decimal degree co-ordinates to qdgc
+Add a column with QDGC information. Need to use a function get_qdgcCode() to convert decimal degree co-ordinates to QDGC
 
 ```{r}
 # Function to get quarter degree grid cell codes from decimal co-ordinates
@@ -374,7 +372,7 @@ Select data from pentads that include Hessequa Atlas Area
 Remove records where speciesKey is Null
 
 ```{r}
-# subset cube to only include records from Hessequa atlas area
+# subset cube to only include records from Hessequa atlas area and remove NA speciesKey
 birdcubeWCYearPentad <- birdcubeWCYearPentad %>% ungroup()
 
 birdcubeHAAYearPentad <- birdcubeWCYearPentad %>% filter(birdcubeWCYearPentad$pentad %in% Hpentads) %>%
@@ -422,7 +420,7 @@ QDGC_sf %>%
     ggtitle("Sampling framework of Hessequa atlas area at QDGC resolution")
 ```
 
-Plot shows at a quarter degree resolution the number of full protocol surveys performed in the Hessequa Atlas Area
+Plot shows at a quarter degree grid cell resolution the number of full protocol surveys performed in the Hessequa Atlas Area
 
 ### SABAP 2 data for Hessequa Atlas Area
 
@@ -443,7 +441,7 @@ QDGC_sf %>%
     ggtitle("SABAP2 bird data of Hessequa atlas area at QDGC resolution")
 ```
 
-Plot shows the grid cells (at quarter-degree grid cell resolution) in which birds have been recorded through SABAP2 in the Hessequa Atlas Area 
+Plot shows the grid cells (at quarter degree grid cell resolution) in which birds have been recorded through SABAP2 in the Hessequa Atlas Area 
 
 ```{r}
 # Visualise spatial distribution of stuctured data as number of species
@@ -458,7 +456,7 @@ QDGC_sf %>%
     ggtitle("SABAP2 bird data of Hessequa atlas area at QDGC resolution")
 ```
 
-Plot shows the number of bird species recorded in grid cells (at quarter-degree grid cell resolution) through SABAP2 in the Hessequa Atlas Area
+Plot shows the number of bird species recorded in grid cells (at quarter degree grid cell resolution) through SABAP2 in the Hessequa Atlas Area
 
 ### Bird occurrence cube for Hessequa Atlas Area
 
@@ -482,7 +480,7 @@ QDGC_sf %>%
     ggtitle("Bird cube data of Hessequa atlas area at QDGC resolution")
 ```
 
-Plot shows the number of species recorded in the unstructured data in the Hessequa Atlas Area at a qdgc resolution
+Plot shows the number of species recorded in the unstructured data in the Hessequa Atlas Area at a QDGC resolution
 
 ## At pentad scale
 
@@ -497,7 +495,7 @@ HAASF %>%
     ggtitle("Sampling framework of Hessequa atlas area at pentad resolution")
 ```
 
-Plot shows at a quarter degree resolution the number of full protocol surveys performed in the Hessequa Atlas Area. There are 77 grid cells, and there have been surveys in 76 of them.
+Plot shows at a pentad resolution the number of full protocol surveys performed in the Hessequa Atlas Area. There are 77 grid cells, and there have been surveys in 76 of them.
 
 ### SABAP 2 data for Hessequa Atlas Area
 
@@ -515,7 +513,7 @@ HAASF %>%
             by = join_by(pentad)) %>%
   ggplot() +
     geom_sf(aes(fill = occurrenceStatus), col = alpha("white", 0)) +
-    ggtitle("SABAP2 bird data of Hessequa atlas area at QDGC resolution")
+    ggtitle("SABAP2 bird data of Hessequa atlas area at pentad resolution")
 ```
 
 Plot shows the grid cells (at pentad resolution) in which birds have been recorded through SABAP2 in the Hessequa Atlas Area. Birds have been recorded in 69 of the 77 grid cells (surveys in 76)
