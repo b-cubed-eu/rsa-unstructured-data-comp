@@ -32,7 +32,7 @@ Load and save unstructured data from GBIF.
 
 SABAP2 data are collected at a pentad resolution (5min x 5min).
 
-The data are prepared both at a pentad resolution, and at quarter-degree grid cell resolution. 9 pentads fit into one quarter degree grid cell (15 min x 15 min)
+The data are prepared both at a pentad resolution, and at quarter degree grid cell resolution (QDGC). 9 pentads fit into one quarter degree grid cell (15 min x 15 min)
 
 The period 2008-2024 is of interest
 
@@ -91,8 +91,8 @@ glimpse(SABAP2WCraw)
 
 ### Download cube (qdgc per year)
 
-Retrieved the species occurrence cubes using rgbif. 
-The occurrence cube on a qdgc scale per year.
+Retrieved the species occurrence cube using rgbif. 
+The occurrence cube is at a QDGC scale per year.
 To account for sampling bias, the specification recommends including an occurrence count for a higher taxon, typically the family.
 
 The query excluded SABAP2 data
@@ -143,11 +143,9 @@ glimpse(birdcubeWCYearQDGC)
 
 ### Download occurrence data and create cube (pentad per year)
 
-Cube at pentad resolution not available through rgbif. 
+Cube at pentad resolution not available through rgbif. Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution.
 
-Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution.
-
-Occurrence data is downloaded from GBIF.org. Unzip and store folders under *./data/raw*.
+Occurrence data is downloaded from GBIF.org. Unzip and store folder under *./data/raw*.
 
 Filters were:
 
@@ -162,6 +160,7 @@ Administrative areas (gadm) = Western Cape - ZAF.9_1
 Location: Including co-ordinates
 
 Excluded SABAP2 dataset
+
 
 **Unstructured bird data Western Cape**: 0000453-250225085111116.zip
 
@@ -238,7 +237,7 @@ Select records from events where full sampling protocol followed (i.e., adhoc sa
 
 Create a column called 'pentad'
 
-Add a column with qdgc information
+Add a column with QDGC information
 
 ```{r}
 # subset data to include years between 2008 and 2024
@@ -269,7 +268,7 @@ Select data from years between 2008 and 2024
 
 Calculate number of full protocol sampling events
 
-Add a column with qdgc information. Need to use a function get_qdgcCode() to convert decimal degree co-ordinates to qdgc
+Add a column with QDGC information. Need to use a function 'get_qdgcCode()' to convert decimal degree co-ordinates to QDGC
 
 ```{r}
 # Function to get quarter degree grid cell codes from decimal co-ordinates
@@ -356,11 +355,11 @@ The occurrence cube includes data for gridcells falling outside of the Western C
 
 ```{r}
 # subset cube to only include records between 2015 and 2024
-birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(year >= 2015 & year <=2024)
+birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(year >= 2008 & year <=2024)
 
-# subset cube to only include QDGC from Hessequa atlas area 
+# subset cube to only include QDGC from Western Cape
 
-WCQDGC<-unique(WCSF$qdgccode) # QDGC in Hessequa atlas area
+WCQDGC<-unique(WCSF$qdgccode) # QDGC in Western Cape
 
 birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(birdcubeWCYearQDGC$qdgccode %in% WCQDGC)
 ```
@@ -441,7 +440,7 @@ QDGC_sf %>%
     ggtitle("SABAP2 bird data of Western Cape at QDGC resolution")
 ```
 
-Plot shows the grid cells (at quarter-degree grid cell resolution) in which birds have been recorded through SABAP2 in the Western Cape 
+Plot shows the grid cells (at quarter degree grid cell resolution) in which birds have been recorded through SABAP2 in the Western Cape 
 
 ```{r}
 # Visualise spatial distribution of stuctured data as number of species
@@ -456,7 +455,7 @@ QDGC_sf %>%
     ggtitle("SABAP2 bird data of Western Cape at QDGC resolution")
 ```
 
-Plot shows the number of bird species recorded in grid cells (at quarter-degree grid cell resolution) through SABAP2 in the Western Cape
+Plot shows the number of bird species recorded in grid cells (at quarter degree grid cell resolution) through SABAP2 in the Western Cape
 
 ### Bird occurrence cube for Western Cape
 
@@ -480,11 +479,11 @@ QDGC_sf %>%
     ggtitle("Bird cube data of Western Cape at QDGC resolution")
 ```
 
-Plot shows the number of species recorded in the unstructured data in the Western Cape at a qdgc resolution
+Plot shows the number of species recorded in the unstructured data in the Western Cape at a QDGC resolution
 
 ## At pentad scale
 
-### Sampling framework data for Hessequa Atlas Area
+### Sampling framework data for Western Cape
 
 ```{r}
 # Visualise spatial distribution sampling framework
@@ -495,7 +494,7 @@ WCSF %>%
     ggtitle("Sampling framework of Western Cape at pentad resolution")
 ```
 
-Plot shows at a quarter degree resolution the number of full protocol surveys performed in the Hessequa Atlas Area.
+Plot shows at a pentad resolution the number of full protocol surveys performed in the Western Cape
 
 ### SABAP 2 data for Western Cape
 
@@ -516,7 +515,7 @@ WCSF %>%
     ggtitle("SABAP2 bird data of Western Cape at pentad resolution")
 ```
 
-Plot shows the grid cells (at pentad resolution) in which birds have been recorded through SABAP2 in the Western Cape.
+Plot shows the grid cells (at pentad resolution) in which birds have been recorded through SABAP2 in the Western Cape. Seems to be a spatial missmatch between data obtained from GBIF, and that obtained from SABAP2 website.
 
 ```{r}
 # Visualise spatial distribution of structured data as number of species
@@ -533,7 +532,7 @@ WCSF %>%
 
 Plot shows the number of bird species recorded in grid cells (at pentad resolution) through SABAP2 in the Western Cape
 
-### Bird occurrence cube for Hessequa Atlas Area
+### Bird occurrence cube for Western Cape
 
 ```{r}
 # Add geometry of sampling framework by taking an inner join
