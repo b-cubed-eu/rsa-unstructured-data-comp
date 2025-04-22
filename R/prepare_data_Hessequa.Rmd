@@ -22,6 +22,7 @@ library(tidyverse) # Data wrangling and visualisation
 library(here)      # Relative paths
 library(sf)        # Work with spatial data
 library(rgbif)     # To request occurrence cubes
+library(gcube)     # To create a cube using a bespoke grid
 ```
 
 # Goal
@@ -66,7 +67,9 @@ glimpse(HAASFraw)
 
 Occurrence data was downloaded from GBIF.org.
 Unzip and store folder under *./data/raw*.
-The SABAP2 dataset was filtered so that only data from the Western Cape (Administrative areas = Western Cape - ZAF.9_1) was downloaded
+The SABAP2 dataset was filtered so that only data from the Western Cape (Administrative areas = Western Cape - ZAF.9_1) was downloaded.
+
+Note these data were not obtained as a cube through rgbif, as some manipulation is required to remove adhoc records that is not possible with the filters available.
 
 **SABAP2 - Southern African Bird Atlas Project 2**: 0000102-240626123714530.zip
 
@@ -143,7 +146,7 @@ glimpse(birdcubeWCYearQDGC)
 
 ### Download occurrence data and create cube (pentad per year)
 
-Cube at pentad resolution not available through rgbif. Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution.
+Cube at pentad resolution not available through rgbif. Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution using gcube.
 
 Occurrence data is downloaded from GBIF.org. Unzip and store folders under *./data/raw*.
 
@@ -179,7 +182,7 @@ birdsWCraw<- read_delim(file.path(data_path,
 glimpse(birdsWCraw)
 ```
 
-Create a cube that has the same structure as that downloaded from rgbif
+Create a cube from downloaded occurrence data
 
 ```{r}
 # select columns required
@@ -206,27 +209,73 @@ birdsWC<-birdsWC %>% unite("pentad", c(pentadLat,pentadLong), sep = "_", remove 
 
 ```
 
+Prepare data for gcube
+
 ```{r}
-# Group by year, species, pentad, speciesKey, family. Count the occurrences and calculate minimum coordinateUncertaintyInMeters
-birdcubeWCYearPentad <-birdsWC %>% 
-    group_by(year, pentad, species, speciesKey, family) %>%
-    summarise(n = n(), mincoordinateUncertaintyInMeters = min(coordinateUncertaintyInMeters))
+# add time point for each observation based on year
+birdsWC<- birdsWC %>% mutate (time_point = case_when(
+  year == 2015  ~ 1,
+  year == 2016  ~ 2,
+  year == 2017  ~ 3,
+  year == 2018  ~ 4,
+  year == 2019  ~ 5,
+  year == 2020  ~ 6,
+  year == 2021  ~ 7,
+  year == 2022  ~ 8,
+  year == 2023  ~ 9,
+  year == 2024  ~ 10,
+))
 
-# count records per family per pentad per year
-familyn <-birdsWC %>% 
-    group_by(year, pentad, family) %>%
-    summarise(familycount = n())
+Hpentads<-unique(HAASFraw$pentad) # pentads in Hessequa atlas area
 
-# join family counts to occurrence cube
-birdcubeWCYearPentad<- birdcubeWCYearPentad %>% left_join(familyn)
- 
-# Look at output
-glimpse(birdcubeWCYearPentad)
+# subset to only include records from Hessequa atlas area, remove NA speciesKey, Assign NA coordinateUncertaintyInMeters to '1000m'
+birdsHAA <- birdsWC %>% filter(birdsWC$pentad %in% Hpentads) %>%
+  drop_na(speciesKey) %>% replace_na(list(coordinateUncertaintyInMeters = 1000))
+```
+
+```{r}
+# create sf object
+birdsHAAsf <- st_as_sf(x = birdsHAA,                         
+               coords = c('decimalLongitude', 'decimalLatitude'), crs = st_crs(HAASFraw))
+```
+
+```{r}
+# reproject to a flat co-ordinate reference system
+birdsHAAsfreproj <- st_transform(birdsHAAsf, crs = "EPSG:2049") # EPSG:2049 is ideal for Hessequa Atlas Area
+  
+HAASFrawReproj<-st_transform(HAASFraw, crs = "EPSG:2049")
+```
+
+```{r}
+# create a nested dataframe in the format required to produce multi-species cube
+birdsHAAdf<-birdsHAAsfreproj %>% group_by(speciesKey, species, family) %>% nest(.key = "observations") %>% add_column(grid = rep(list(HAASFrawReproj), length(unique(birdsHAAsfreproj$speciesKey))), id_col = rep("pentad", length(unique(birdsHAAsfreproj$speciesKey))), seed = rep (NA, length(unique(birdsHAAsfreproj$speciesKey))), aggregate = rep (TRUE, length(unique(birdsHAAsfreproj$speciesKey))), randomisation= rep("uniform", length(unique(birdsHAAsfreproj$speciesKey)))) %>% ungroup()
+```
+
+```{r}
+# create cube
+birdGcubeHAAYearPentad<-map_grid_designation(df = birdsHAAdf, nested = FALSE)
+```
+
+# structure cube in the same way as rgbif
+
+```{r}
+birdcubeHAAYearPentad<-birdGcubeHAAYearPentad %>%filter(n != 0) %>% mutate (year = case_when(
+  time_point == 1 ~ 2015,
+  time_point == 2  ~ 2016,
+  time_point == 3  ~ 2017,
+  time_point == 4  ~ 2018,
+  time_point == 5  ~ 2019,
+  time_point == 6 ~ 2020,
+  time_point == 7  ~ 2021,
+  time_point == 8  ~ 2022,
+  time_point == 9  ~ 2023,
+  time_point == 10 ~ 2024,
+)) %>% select(family:species, pentad:min_coord_uncertainty, year) %>% rename(mincoordinateuncertaintyinmeters = min_coord_uncertainty)
 ```
 
 # Subset datasets 
 
-Select Hessequa Atlas Area grid cells, data falling into correct time period (2015-2024), and where full protocol was used for surveys (i.e., adhoc records in SABAP2 are removed)
+Select Hessequa Atlas Area grid cells, data falling into correct time period (2015-2024), and where full protocol was used for surveys (i.e., adhoc records in SABAP2 are removed). From cubes remove records with a minimum con-ordinate uncertainty of > 8 km for pentads and 27 km for qdgc
 
 ## SABAP2 data for Western Cape
 
@@ -352,11 +401,16 @@ HAASF$qdgccode<-apply(HAASFcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y
 
 Select data from years between 2015 and 2024
 
+Exclude data that have mincoordinateuncertaintyinmeters > 27000
+
 Select data from QDGC that include Hessequa Atlas Area
 
 ```{r}
 # subset cube to only include records between 2015 and 2024
 birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(year >= 2015 & year <=2024)
+
+# Subset data to only include records with min co-ordinate uncertainty of <= 27km
+birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(mincoordinateuncertaintyinmeters <=27000)
 
 # subset cube to only include QDGC from Hessequa atlas area 
 
@@ -365,18 +419,13 @@ HAAQDGC<-unique(HAASF$qdgccode) # QDGC in Hessequa atlas area
 birdcubeHAAYearQDGC <- birdcubeWCYearQDGC %>% filter(birdcubeWCYearQDGC$qdgccode %in% HAAQDGC)
 ```
 
-## Bird occurrence cube for Western Cape at Pentad scale
+## Bird occurrence cube for Western Cape at pentads
 
-Select data from pentads that include Hessequa Atlas Area
-
-Remove records where speciesKey is Null
+Exclude data that have mincoordinateuncertaintyinmeters > 8 km
 
 ```{r}
-# subset cube to only include records from Hessequa atlas area and remove NA speciesKey
-birdcubeWCYearPentad <- birdcubeWCYearPentad %>% ungroup()
-
-birdcubeHAAYearPentad <- birdcubeWCYearPentad %>% filter(birdcubeWCYearPentad$pentad %in% Hpentads) %>%
-drop_na(speciesKey)
+# Subset data to only include records with min co-ordinate uncertainty of <= 8 km
+birdcubeHAAYearPentad <- birdcubeHAAYearPentad %>% filter(mincoordinateuncertaintyinmeters <=8000)
 ```
 
 # Visualise data
@@ -444,7 +493,7 @@ QDGC_sf %>%
 Plot shows the grid cells (at quarter degree grid cell resolution) in which birds have been recorded through SABAP2 in the Hessequa Atlas Area 
 
 ```{r}
-# Visualise spatial distribution of stuctured data as number of species
+# Visualise spatial distribution of structured data as number of species
 QDGC_sf %>%
   inner_join(SABAP2HAA %>%
               filter(occurrenceStatus == "PRESENT") %>%

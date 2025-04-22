@@ -66,7 +66,9 @@ glimpse(WCSFraw)
 
 Occurrence data was downloaded from GBIF.org.
 Unzip and store folders under *./data/raw*.
-The SABAP2 dataset was filtered so that only data from the Western Cape (Administrative areas = Western Cape - ZAF.9_1) was downloaded
+The SABAP2 dataset was filtered so that only data from the Western Cape (Administrative areas = Western Cape - ZAF.9_1) was downloaded.
+
+Note these data were not obtained as a cube through rgbif, as some manipulation is required to remove adhoc records that is not possible with the filters available.
 
 **SABAP2 - Southern African Bird Atlas Project 2**: 0000102-240626123714530.zip
 
@@ -145,6 +147,8 @@ glimpse(birdcubeWCYearQDGC)
 
 Cube at pentad resolution not available through rgbif. Therefore, downloaded occurrence data, and created a yearly cube at pentad resolution.
 
+Note for Hessequa Atlas area this was done using gcube. This is not possible at the moment, as gcube can only be used to create cubes for grids on a flat co-ordinate system, and there isn't one that covers the whole of the Western Cape. gcube will be used in future when it is possible. Thus for now assumed a record is in a grid cell in which it falls, no matter the uncertainty. 
+
 Occurrence data is downloaded from GBIF.org. Unzip and store folder under *./data/raw*.
 
 Filters were:
@@ -208,6 +212,11 @@ birdsWC<-birdsWC %>% unite("pentad", c(pentadLat,pentadLong), sep = "_", remove 
 ```
 
 ```{r}
+# Assign any NA in coordinateUncertaintyInMeters to 1000
+birdsWC<-birdsWC %>%replace_na(list(coordinateUncertaintyInMeters = 1000))
+```
+
+```{r}
 # Group by year, species, pentad, speciesKey, family. Count the occurrences and calculate minimum coordinateUncertaintyInMeters
 birdcubeWCYearPentad <-birdsWC %>% 
     group_by(year, pentad, species, speciesKey, family) %>%
@@ -227,7 +236,7 @@ glimpse(birdcubeWCYearPentad)
 
 # Subset datasets 
 
-Select data falling into correct time period (2008-2024), and where full protocol was used for surveys (i.e., adhoc records in SABAP2 are removed)
+Select data falling into correct time period (2008-2024), and where full protocol was used for surveys (i.e., adhoc records in SABAP2 are removed). From cubes remove records with a minimum con-ordinate uncertainty of > 8 km for pentads and 27 km for qdgc
 
 ## SABAP2 data for Western Cape
 
@@ -351,11 +360,16 @@ WCSF$qdgccode<-apply(WCSFcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y']
 
 Select data from years between 2008 and 2024
 
-The occurrence cube includes data for gridcells falling outside of the Western Cape. Therefore WC cells are selected
+Exclude data that have mincoordinateuncertaintyinmeters > 27000
+
+The occurrence cube includes data for grid cells falling outside of the Western Cape. Therefore WC cells are selected
 
 ```{r}
-# subset cube to only include records between 2015 and 2024
+# subset cube to only include records between 2008 and 2024
 birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(year >= 2008 & year <=2024)
+
+# Subset data to only include records with min co-ordinate uncertainty of <= 27km
+birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(mincoordinateuncertaintyinmeters <=27000)
 
 # subset cube to only include QDGC from Western Cape
 
@@ -366,14 +380,19 @@ birdcubeWCYearQDGC <- birdcubeWCYearQDGC %>% filter(birdcubeWCYearQDGC$qdgccode 
 
 ## Bird occurrence cube for Western Cape at Pentad scale
 
+Exclude data that have mincoordinateuncertaintyinmeters > 8 km
+
 Select data from pentads that include WC
 
 Remove records where speciesKey is Null
 
 ```{r}
-# subset cube to only include records from Western Cape
 birdcubeWCYearPentad <- birdcubeWCYearPentad %>% ungroup()
 
+# Subset data to only include records with min co-ordinate uncertainty of <= 8 km
+birdcubeWCYearPentad <- birdcubeWCYearPentad %>% filter(mincoordinateUncertaintyInMeters <=8000)
+
+# subset cube to only include records from Western Cape
 birdcubeWCYearPentad <- birdcubeWCYearPentad %>% filter(birdcubeWCYearPentad$pentad %in% WCpentads) %>%
 drop_na(speciesKey)
 ```
