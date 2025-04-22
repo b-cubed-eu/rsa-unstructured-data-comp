@@ -25,6 +25,7 @@ library(ggpubr)    # Correlations
 library(DT)        # Data tables for html
 library(vcd)       # Kappa statistics
 library(vegan)     # Bray kurtis index
+library(RColorBrewer)   # Colour palette
 ```
 
 # Goal
@@ -34,6 +35,25 @@ Explore structured data of the Hessequa systematic atlasing subproject of the â€
 Explore unstructured data from GBIF for the same area.
 
 Structured and unstructured data were prepared at both quarter degree grid cell (QDGC) and pentad (5 min x 5 min) scales, but only pentad scale data is explored and analysed below.
+
+In these analysis various subsets of the data were explored
+1. All species in SABAP2
+2. All species with > 100 records in SABAP2
+3. Number of observations per species/total number of observations
+
+Data for two time periods explored 2015-2024 and 2015-2022
+
+```{r}
+# Create a custom color scale
+library(RColorBrewer)
+myColors <- brewer.pal(5, "Dark2")
+names(myColors) <- c("Very rare", "Rare", "Common",
+                     "Very common", "Extremely common")
+colScale <- scale_color_manual(name = "Category",
+                                values = myColors)
+fillScale <- scale_fill_manual(name = "Category",
+                                values = myColors)
+```
 
 # Load data
 
@@ -158,7 +178,7 @@ HAASFprep %>%
   group_by(year) %>%
     summarise(n = sum(count)) %>%
   ggplot(aes(x = year, y = n)) +
-  geom_col() +
+  geom_col(fill = "#1B9E77") +
   labs(x = "Year",
        y = "Number of surveys")+ scale_x_continuous(breaks=seq(2015,2024,1))
 ```
@@ -171,7 +191,7 @@ HAASFprep %>%
   group_by(pentad) %>%
     summarise(n = sum(count)) %>%
   ggplot(aes(x = n)) +
-  geom_histogram() +
+  geom_histogram(fill = "#D95F02", color = "black") +
   labs(x = "Number of surveys",
        y = "Number of pentads")
 ```
@@ -227,7 +247,9 @@ Over 100 000 bird records
 # Number of observations per year
 SABAP2HAA %>%
   ggplot(aes(x = year(eventDate))) +
-  geom_histogram()
+  geom_bar(fill = "#1B9E77")+
+  labs(x = "Year",
+       y = "Number of observations")
 ```
 
 Number of observations has varied across the years. No specific trend. Number of observations range between 10 000 - 15 000 per year, excluding 2023. Note few observations for 2023, as only data up until February 2023 have been submitted to GBIF.
@@ -238,7 +260,7 @@ SABAP2HAAGrp %>%
   group_by(species) %>%
   summarise(n_obs = n()) %>%
   ggplot(aes(x = n_obs)) +
-  geom_histogram() +
+  geom_histogram(fill = "#D95F02", color = "black") +
   labs(x = "Number of observations",
        y = "Number of species")
 ```
@@ -259,7 +281,7 @@ SABAP2HAAGrp %>%
   group_by(pentad) %>%
   summarise(n_obs = n()) %>%
   ggplot(aes(x = n_obs)) +
-  geom_histogram() +
+  geom_histogram(fill = "#7570B3", color = "black") +
   labs(x = "Number of observations",
        y = "Number of pentads")
 ```
@@ -272,7 +294,7 @@ SABAP2HAAGrp %>%
   group_by(pentad) %>%
   summarise(nSpp = n_distinct(species)) %>%
   ggplot(aes(x = nSpp)) +
-  geom_histogram() +
+  geom_histogram(fill = "#E7298A", color = "black") +
   labs(x = "Number of species",
        y = "Number of pentads")
 ```
@@ -289,7 +311,7 @@ SABAP2HAA %>%
   inner_join(HAASFprep,
             by = join_by(pentad, year)) %>%
   ggplot(aes(x = n, y = count)) +
-  geom_point() +
+  geom_point(color = "#66A61E") +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
@@ -307,7 +329,7 @@ SABAP2HAA %>%
   inner_join(HAASFprep,
             by = join_by(pentad, year)) %>%
   ggplot(aes(x = nSpp, y = count)) +
-  geom_point() +
+  geom_point(color = "#1B9E77") +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
@@ -346,7 +368,7 @@ Data between 2015 and 2024
 sum(UnstrucHAA$n) 
 ```
 
-Total of 22250 observations. Less than from the SABAP2 data
+Total of 21459 observations. Less than from the SABAP2 data
 
 ```{r}
 # Number of observations per year
@@ -354,7 +376,7 @@ UnstrucHAA %>%
   group_by(year) %>%
   summarise(n_obs = sum(n)) %>%
   ggplot(aes(x = year, y = n_obs)) +
-  geom_col() +
+  geom_col(fill = "#7570B3") +
   labs(x = "Year",
        y = "Number of observations") + scale_x_continuous(breaks=seq(2015,2024,1))
 ```
@@ -367,12 +389,12 @@ UnstrucHAA %>%
   group_by(species) %>%
   summarise(n_obs = sum(n)) %>%
   ggplot(aes(x = n_obs)) +
-  geom_histogram() +
+  geom_histogram(fill = "#E7298A", color = "black") +
   labs(x = "Number of observations",
        y = "Number of species")
 ```
 
-322 bird species recorded, of which 107 were recorded < 10 times (very rare), 137 were recorded between 10 and 100 times (rare), and 78 were recorded between 100 and 100 times (common). No birds species were recorded more than 100 times. 12 more bird species recorded than in SABAP2, bird species not being recorded as often as in SABAP2.
+322 bird species recorded, of which 111 were recorded < 10 times (very rare), 137 were recorded between 10 and 100 times (rare), and 74 were recorded between 100 and 100 times (common). No birds species were recorded more than 100 times. 12 more bird species recorded than in SABAP2, bird species not being recorded as often as in SABAP2.
 
 ```{r}
 # Number of species in different observation/commoness categories
@@ -392,7 +414,7 @@ UnstrucHAA %>%
   group_by(pentad) %>%
   summarise(n_obs = sum(n)) %>%
   ggplot(aes(x = n_obs)) +
-  geom_histogram() +
+  geom_histogram(fill = "#66A61E", color = "black") +
   labs(x = "Number of observations",
        y = "Number of pentads")
 ```
@@ -405,12 +427,12 @@ UnstrucHAA %>%
   group_by(pentad) %>%
   summarise(nSpp = n_distinct(species)) %>%
   ggplot(aes(x = nSpp)) +
-  geom_histogram() +
+  geom_histogram(fill = "#1B9E77", color = "black") +
   labs(x = "Number of species",
        y = "Number of pentads")
 ```
 
-Number of species varies across pentads. Most have < 50 species, but ~12 have > 100 species.
+Number of species varies across pentads. Most have < 50 species, but ~13 have > 100 species.
 
 # Comparing structured and unstructured data (2015-2024)
 
@@ -483,33 +505,33 @@ SppNotOverlap2 %>%
 group_by(species) %>%
   summarise(nObs = sum(n)) %>%
    ggplot(aes(x = nObs)) +
-  geom_histogram() +
+  geom_histogram(fill = "#1B9E77", color = "black") +
   labs(x = "Number of observations",
        y = "Number of species")
 ```
 
-There are 50 species in the unstructured data that are not in the SABAP2 data. For 40 of these species there are < 15 records. For the 10 species for which there are > 15 records, the details are below. However, of these ten, while a few are likely to occur in the area, a number seem to be missidentfications or there are multiple accepted species names in GBIF. For a number, however, there seems to be an issue with the data flowing into GBIF, as these species should be included in the SABAP2 data. Some of these missing species fall into the genera that were removed from the dataset as 'species' was NA. Note the SABAP2 data does go through quality control. All comparisons below are based on the species in SABAP2.
+There are 50 species in the unstructured data that are not in the SABAP2 data. For 40 of these species there are < 15 records. For the 10 species for which there are > 15 records, the details are below. However, of these ten, while a few are likely to occur in the area, a number seem to be missidentifications or there are multiple accepted species names in GBIF. For a number, however, there seems to be an issue with the data flowing into GBIF, as these species should be included in the SABAP2 data. Some of these missing species fall into the genera that were removed from the dataset as 'species' was NA. Note the SABAP2 data does go through quality control. All comparisons below are based on the species in SABAP2.
 
 	
-- *Macronyx capensis* (Cape Longclaw) (36 records): Area does appear to be part of range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
+- *Macronyx capensis* (Cape Longclaw) (34 records): Area does appear to be part of range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
 - *Dessonornis caffer* (Cape Robin-Chat) (36 records): Cape Robin-Chat appears to have two accepted species names in GBIF (*Cossypha caffra* (Linnaeus, 1771) and *Dessonornis caffer* (Linnaeus, 1771)). It is under *Cossypha caffra* in SABAP2.
 
-- *Milvus migrans* (Black kite) (46 records): A summer visitor mostly to the north of the country. Possible missidentifications? Can be confused with Yellow-billed kite (*Milvus aegyptius*), which is included in SABAP2
+- *Milvus migrans* (Black kite) (44 records): A summer visitor mostly to the north of the country. Possible missidentifications? Can be confused with Yellow-billed kite (*Milvus aegyptius*), which is included in SABAP2
 
-- *Certhilauda curvirostris* (Cape Lark) (58 records): Range restricted species, which does not occur in the area. Possible missidentifications? Maybe confused with 	*Certhilauda brevirostris* (Agulhas lark), which does occur in this area, and is included in the SABAP2 data.
+- *Certhilauda curvirostris* (Cape Lark) (49 records): Range restricted species, which does not occur in the area. Possible missidentifications? Maybe confused with 	*Certhilauda brevirostris* (Agulhas lark), which does occur in this area, and is included in the SABAP2 data.
 
-- *Upupa epops* (Hoopoe) (98 records): two accepted species names in GBIF (Upupa epops Linnaeus, 1758 and *Upupa africana* Bechstein, 1811). The species appears under the name *Upupa africana* in SABAP2 data.
+- *Upupa epops* (Hoopoe) (95 records): two accepted species names in GBIF (Upupa epops Linnaeus, 1758 and *Upupa africana* Bechstein, 1811). The species appears under the name *Upupa africana* in SABAP2 data.
 
-- *Buteo buteo* (buzzard) (111 records): A summer visitor, but it is very similar to *Buteo trizonatus* (difficult to tell a part), which is a resident in the area, and is in the SABAP2 data. Possible missidentifications? Note, many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
+- *Buteo buteo* (buzzard) (109 records): A summer visitor, but it is very similar to *Buteo trizonatus* (difficult to tell a part), which is a resident in the area, and is in the SABAP2 data. Possible missidentifications? Note, many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- *Psalidoprocne pristoptera* (black saw-wing) (122 records): area is within its range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
+- *Psalidoprocne pristoptera* (black saw-wing) (120 records): area is within its range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- *Phalacrocorax carbo* (common cormorant) (122 records): possible misidentification. Maybe being confused with *Phalacrocorax capensis* (cape cormorant), which does occur in the area and is in the SABAP2 data.
+- *Phalacrocorax carbo* (common cormorant) (119 records): possible misidentification. Maybe being confused with *Phalacrocorax capensis* (cape cormorant), which does occur in the area and is in the SABAP2 data.
 
-- *Euplectes capensis* (yellow bishop) (130 records): area is in range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
+- *Euplectes capensis* (yellow bishop) (129 records): area is in range. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
-- *Zosterops virens* (Cape white-eye) (430 records): two accepted name in GBIF (*Zosterops virens* Sundevall, 1850 and *Zosterops capensis* Sundevall, 1850). Area is in range, but it appears under neither name in SABAP2 data. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
+- *Zosterops virens* (Cape white-eye) (423 records): two accepted name in GBIF (*Zosterops virens* Sundevall, 1850 and *Zosterops capensis* Sundevall, 1850). Area is in range, but it appears under neither name in SABAP2 data. Many records in Western Cape for this species on SABAP2 website, but does not appear in data downloaded from GBIF.
 
 ## Range overlap
 
@@ -601,7 +623,7 @@ This table shows the number of sabap2 grid cells (squares) where a species was o
 summary(comp_range_data)
 ```
 
-Overall we see an overlap of 24.5%
+Overall we see an overlap of 25%
 
 ```{r}
 # plot percentage range overlap
@@ -610,6 +632,7 @@ comp_range_data %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
   geom_histogram() +
+  fillScale +
   labs(x = "Percentage range overlap",
        y = "Number of species")
 ```
@@ -623,6 +646,7 @@ comp_range_data %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_birdcube_total_sabap2, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
@@ -631,6 +655,8 @@ comp_range_data %>%
 
 If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which there is overlap between the sabap2 records and cube records.
 
+### All species in SABAP2
+
 ```{r}
 # Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
 comp_range_data %>%
@@ -638,14 +664,18 @@ comp_range_data %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
-           method = "pearson")
+           method = "pearson")+
+  labs(x = "Percentage of SABAP2 squares occupied\nby species in SABAP2 dataset",
+       y = "Percentage of cube squares occupied\nby species in cube dataset")
 ```
 
 If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. But note these grid cells might not overlap
 
+### Only common and very common species in SABAP2
 
 ```{r}
 # same plot as previous, but not including rare and very rare species
@@ -655,10 +685,13 @@ comp_range_data %>%
   filter(category %in% c("Common", "Very common", "Extremely common")) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
-           method = "pearson")
+           method = "pearson")+
+  labs(x = "Percentage of SABAP2 squares occupied\nby species in SABAP2 dataset",
+       y = "Percentage of cube squares occupied\nby species in cube dataset")
 ```
 
 For common and very common species (rare excluded) - If we look at the graph it appears that of the SABAP2 grid cells the percentage of grid cells in which a species is observed in SABAP2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. But these grid cells might not overlap, and the correlation in weaker than when rare and very rare species are included.
@@ -708,12 +741,14 @@ comp_range_data2 %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
            method = "pearson") +
   facet_grid("cyclus",
-             scales = "free_y")
+             scales = "free_y")+ labs(x = "Percentage of SABAP2 squares occupied by species in SABAP2 dataset",
+       y = "Percentage of cube squares occupied by species in cube dataset")
 ```
 
 The positive correlation between percentage grid cells in SABAP2 data and cube holds if we look at different time periods. Time period 1 = 2015 and 2016, time period 2 = 2017 and 2018, time period 3 = 2019 and 2020, time period 4 = 2021 and 2022, and time period 5 = 2023 and 2024. Note the results from 2023/2024 look odd as very little SABAP2 and unstructured data submitted to GBIF for this period.
@@ -725,6 +760,7 @@ comp_range_data2 %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
   geom_histogram() +
+  fillScale +
   labs(x = "Percentage range overlap",
        y = "Number of species") + facet_grid("cyclus", scales = "free_y")
 ```
@@ -765,7 +801,7 @@ NoSppOverlapSub # number of species in unstructured data that are in sabap2 data
 PercSppOverlapSub # percentage of species in sabap2 data that are in unstructured data
 ```
 
-265 species appear in both the structured and unstructured datasets, this represents 85% of the species recorded in SABAP2.
+264 species appear in both the structured and unstructured datasets, this represents 85% of the species recorded in SABAP2.
 
 ```{r}
 # how common (based on sabap2) are the overlapping species, and not-overlapping species
@@ -787,7 +823,7 @@ commonOverlap %>%
   mutate(perc = overlap/total*100)
 ```
 
-Of the 310 species in the SABAP2 data (all appear in the period from 2015 to 2022), 265 are in the unstructured data (85%). Of the 265, 37 are very rare, 72 are rare, 123 are common, and 33 very common. Of the 45 species in SABAP2 that are missing from the unstructured data 37 are very rare, 8 are rare, none are common or very common. The percentage of species recorded in the unstructured data increased with commonness: 50% of very rare species were recorded, 90% of rare species were recorded, 100% of common and very common species were recorded.
+Of the 310 species in the SABAP2 data (all appear in the period from 2015 to 2022), 264 are in the unstructured data (85%). Of the 2645, 36 are very rare, 72 are rare, 123 are common, and 33 very common. Of the 46 species in SABAP2 that are missing from the unstructured data 38 are very rare, 8 are rare, none are common or very common. The percentage of species recorded in the unstructured data increased with commonness: 49% of very rare species were recorded, 90% of rare species were recorded, 100% of common and very common species were recorded.
 
 
 ```{r}
@@ -811,7 +847,7 @@ SppNotOverlap2 %>%
 group_by(species) %>%
   summarise(nObs = sum(n)) %>%
    ggplot(aes(x = nObs)) +
-  geom_histogram() +
+  geom_histogram(fill = "#1B9E77", color = "black") +
   labs(x = "Number of observations",
        y = "Number of species")
 ```
@@ -908,7 +944,7 @@ This table shows the number of sabap2 grid cells where a species was observed, t
 summary(comp_range_data)
 ```
 
-Overall we see a range overlap of 20% (slightly lower than for 2015-2024)
+Overall we see a range overlap of 21% (slightly lower than for 2015-2024)
 
 ```{r}
 # plot percentage range overlap
@@ -917,6 +953,7 @@ comp_range_data %>%
              by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
   geom_histogram() +
+  fillScale +
   labs(x = "Percentage range overlap", y = "Number of species")
 ```
 
@@ -929,6 +966,7 @@ comp_range_data %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_birdcube_total_sabap2, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
@@ -937,6 +975,8 @@ comp_range_data %>%
 
 If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which there is overlap between the sabap2 records and cube records. This correlation is weaker than for the period over 2015-2024.
 
+### All species in SABAP2
+
 ```{r}
 # Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data
 comp_range_data %>%
@@ -944,13 +984,18 @@ comp_range_data %>%
             by = join_by(studied_spec == species)) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
-           method = "pearson")
+           method = "pearson")+
+  labs(x = "Percentage of SABAP2 squares occupied\nby species in SABAP2 dataset",
+       y = "Percentage of cube squares occupied\nby species in cube dataset")
 ```
 
 If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. But note these grid cells might not overlap
+
+### Only common and very common species in SABAP2
 
 ```{r}
 # Plot percentage of SABAP2 grid cells in which species recorded in SABAP2 vs percentage of cells in which recorded in unstructured data (common and very common species only)
@@ -960,19 +1005,26 @@ comp_range_data %>%
   filter(category %in% c("Common", "Very common", "Extremely common")) %>%
   ggplot(aes(x = perc_sabap2_total_sabap2, y = perc_cube_total_cube, color = category)) +
   geom_point() +
+  colScale +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
-           method = "pearson")
+           method = "pearson")+
+  labs(x = "Percentage of SABAP2 squares occupied\nby species in SABAP2 dataset",
+       y = "Percentage of cube squares occupied\nby species in cube dataset")
 ```
 
 For common and very common species (rare excluded) - If we look at the graph it appears that of the sabap2 grid cells the percentage of grid cells in which a species is observed in sabap2 is positively correlated to the percentage grid cells in which a species is recorded in the unstructured data. But these grid cells might not overlap, and the correlation is stronger when all species are included.
 
 # Trend analysis
 
+## Trend comparison with data aggregated per year
+
+### All species in SAPAP2
+
 ```{r}
 # No records per year per species
-time_series_1 <- SABAP2HAA %>%
+time_series_Y1 <- SABAP2HAA %>%
   st_drop_geometry() %>%
   group_by(species, year) %>%
   summarize(occurrence = sum(occurrenceStatus == "PRESENT"))
@@ -980,7 +1032,7 @@ time_series_1 <- SABAP2HAA %>%
 
 ```{r}
 # No records per year per species
-time_series_2 <- UnstrucHAA %>%
+time_series_Y2 <- UnstrucHAA %>%
   st_drop_geometry()  %>%
   group_by(species, year)  %>%
   summarize(occurrence = sum(n)) 
@@ -990,8 +1042,8 @@ time_series_2 <- UnstrucHAA %>%
 # Pearson Correlation for each species
 # inner_join makes sure that only species-year combinations present
 # in both datasets are included
-time_series_cor <- time_series_1 %>%
-  inner_join(time_series_2,
+time_series_Y_cor <- time_series_Y1 %>%
+  inner_join(time_series_Y2,
              by = c("species", "year"),
              suffix = c("_1", "_2")) %>%
   group_by(species) %>%
@@ -999,19 +1051,148 @@ time_series_cor <- time_series_1 %>%
 ```
 
 ```{r}
+# summarise correlations per commonness group
+time_series_Y_cor<-time_series_Y_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+             by = join_by(species == species)) 
+
+time_series_Y_cor %>%
+  group_by(category) %>%
+  summarize(mean(correlation, na.rm = TRUE))
+```
+
+```{r}
 # Visualise results
-time_series_cor %>%  
-ggplot(aes(x = correlation)) +
+time_series_Y_cor %>%  
+  ggplot(aes(x = correlation, fill = category)) +
   geom_histogram() +
+  fillScale +
   labs(x = "Correlation",
        y = "Number of species")
 ```
 
-Graph shows for each species the degree to which the number of records over time in SABAP2 correlates with number of records in unstructured dataset. The strength and direction of the correlation varies significantly between species, but for most is negative, and for 39 species the correlation is NA.
+Most species have a negative correlation, including all common species.
+
+### Common and very common species in SABAP2
+
+```{r}
+# No records per year per species
+time_series_Y1Com <- SABAP2HAA %>%
+  st_drop_geometry() %>%
+  filter(category %in% c("Common", "Very common", "Extremely common")) %>%
+  group_by(species, year) %>%
+  summarize(occurrence = sum(occurrenceStatus == "PRESENT"))
+```
+
+
+```{r}
+# Pearson Correlation for each species
+# inner_join makes sure that only species-year combinations present
+# in both datasets are included
+time_series_YCom_cor <- time_series_Y1Com %>%
+  inner_join(time_series_Y2,
+             by = c("species", "year"),
+             suffix = c("_1", "_2")) %>%
+  group_by(species) %>%
+  summarize(correlation = cor(occurrence_1, occurrence_2, method = "pearson"))
+```
+
+```{r}
+# summarise correlations per commonness group
+time_series_YCom_cor<-time_series_YCom_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+             by = join_by(species == species)) 
+
+time_series_YCom_cor %>%
+  group_by(category) %>%
+  summarize(mean(correlation, na.rm = TRUE))
+```
+
+```{r}
+# Visualise results
+time_series_YCom_cor %>%  
+  ggplot(aes(x = correlation, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+Negative correlations for all very common species, and most common species.
+
+
+### All species in SABAP2, but number of observations is weighed by total number of observations for that year
+
+```{r}
+# No records per year
+total_year_1<-SABAP2HAA %>%
+  st_drop_geometry() %>%
+  group_by(year) %>%
+  summarize(Totalocc = sum(occurrenceStatus == "PRESENT"))
+
+time_series_Y1adj <- SABAP2HAA %>%
+  st_drop_geometry() %>%
+  group_by(species, year) %>%
+  summarize(occurrence = sum(occurrenceStatus == "PRESENT")) %>% left_join(total_year_1) %>% mutate(occCorrect = occurrence/Totalocc)
+```
+
+```{r}
+# No records per year
+total_year_2<-UnstrucHAA %>%
+  st_drop_geometry() %>%
+  group_by(year) %>%
+  summarize(Totalocc = sum(n))
+
+# No records per year per species
+time_series_Y2adj <- UnstrucHAA %>%
+  st_drop_geometry()  %>%
+  group_by(species, year)  %>%
+  summarize(occurrence = sum(n)) %>% left_join(total_year_2) %>% mutate(occCorrect = occurrence/Totalocc)
+```
+
+```{r}
+# Pearson Correlation for each species
+# inner_join makes sure that only species-year combinations present
+# in both datasets are included
+time_series_Yadj_cor <- time_series_Y1adj %>%
+  inner_join(time_series_Y2adj,
+             by = c("species", "year"),
+             suffix = c("_1", "_2")) %>%
+  group_by(species) %>%
+  summarize(correlation = cor(occCorrect_1, occCorrect_2, method = "pearson"))
+```
+
+
+```{r}
+# summarise correlations per commonness group
+time_series_Yadj_cor<-time_series_Yadj_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+             by = join_by(species == species)) 
+
+time_series_Yadj_cor %>%
+  group_by(category) %>%
+  summarize(mean(correlation, na.rm = TRUE))
+```
+
+```{r}
+# Visualise results
+time_series_Yadj_cor %>%  
+  ggplot(aes(x = correlation, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+Graph shows for each species the degree to which the number of records over time in SABAP2 correlates with the number of records in the unstructured dataset. The strength and direction of the correlation varies significantly between species, but is improved in comparison to when the data are not corrected for total number of records.
+
+## Trend comparison with data aggregated per cyclus
+
+### All species in SAPAP2
 
 ```{r}
 # No records per time-period per species
-time_series_1 <- SABAP2HAA %>%
+time_series_Cyc1 <- SABAP2HAA %>%
   st_drop_geometry() %>%
   group_by(species, cyclus) %>%
   summarize(occurrence = sum(occurrenceStatus == "PRESENT")) %>%
@@ -1020,7 +1201,7 @@ time_series_1 <- SABAP2HAA %>%
 
 ```{r}
 # No records per time-period per species
-time_series_2 <- UnstrucHAA %>%
+time_series_Cyc2 <- UnstrucHAA %>%
   st_drop_geometry()  %>%
   group_by(species, cyclus)  %>%
   summarize(occurrence = sum(n)) %>% 
@@ -1031,8 +1212,8 @@ time_series_2 <- UnstrucHAA %>%
 # Pearson Correlation for each species
 # inner_join makes sure that only species-time-period combinations present
 # in both datasets are included
-time_series_cor <- time_series_1 %>%
-  inner_join(time_series_2,
+time_series_Cyc_cor <- time_series_Cyc1 %>%
+  inner_join(time_series_Cyc2,
              by = c("species", "cyclus"),
              suffix = c("_1", "_2")) %>%
   group_by(species) %>%
@@ -1040,53 +1221,151 @@ time_series_cor <- time_series_1 %>%
 ```
 
 ```{r}
-# table of results
-time_series_cor %>%
-  inner_join(SABAP2HAA %>% distinct(species, category),
-            by = join_by(species == species)) %>%
-  DT::datatable() %>%
-  DT::formatRound(columns = "correlation", digits = 2)
-```
-
-```{r}
-# Visualise results
-time_series_cor %>%  
-ggplot(aes(x = correlation)) +
-  geom_histogram() +
-  labs(x = "Correlation",
-       y = "Number of species")
-```
-
-Graph shows for each species the degree to which the number of records over time (based on time periods) in SABAP2 correlates with number of records in unstructured dataset. The strength and direction of the correlation varies significantly between species, and for 38 species the correlation is NA. But, for 27 species correlation > 0.9.
-
-```{r}
 # summarise correlations per commonness group
-time_series_cor<-time_series_cor %>%
+time_series_Cyc_cor<-time_series_Cyc_cor %>%
   inner_join(SABAP2HAA %>% distinct(species, category),
-            by = join_by(species == species)) 
+             by = join_by(species == species)) 
 
-time_series_cor %>%
+time_series_Cyc_cor %>%
   group_by(category) %>%
   summarize(mean(correlation, na.rm = TRUE))
 ```
 
 ```{r}
-# How many for each commonness group is correlation NA
-time_series_cor %>%
-  group_by(category) %>%
-  summarise(n = n(), sumNA = sum(is.na(correlation)))
-```
-
-```{r}
 # Visualise results
-time_series_cor %>%  
+time_series_Cyc_cor %>%  
   ggplot(aes(x = correlation, fill = category)) +
   geom_histogram() +
+  fillScale +
   labs(x = "Correlation",
        y = "Number of species")
 ```
 
-Either not strong or no correlation for all groups. Note for most very rare species, many rare species and a few common species correlation was not possible. No pattern in terms of the correlations and commonness.
+Graph shows for each species the degree to which the number of records over time in SABAP2 correlates with the number of records in the unstructured dataset. The strength and direction of the correlation varies significantly between species. Correlations are improved in comparrison to when the trends are compared for years.
+
+### Common and very common species in SABAP2
+
+```{r}
+# No records per time-period per species
+time_series_Cyc1Com <- SABAP2HAA %>%
+  st_drop_geometry() %>%
+  filter(category %in% c("Common", "Very common", "Extremely common")) %>%
+  group_by(species, cyclus) %>%
+  summarize(occurrence = sum(occurrenceStatus == "PRESENT")) %>%
+  filter(cyclus < 5)
+```
+
+```{r}
+# Pearson Correlation for each species
+# inner_join makes sure that only species-time-period combinations present
+# in both datasets are included
+time_series_CycCom_cor <- time_series_Cyc1Com %>%
+  inner_join(time_series_Cyc2,
+             by = c("species", "cyclus"),
+             suffix = c("_1", "_2")) %>%
+  group_by(species) %>%
+  summarize(correlation = cor(occurrence_1, occurrence_2, method = "pearson"))
+```
+
+```{r}
+# summarise correlations per commonness group
+time_series_CycCom_cor<-time_series_CycCom_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+             by = join_by(species == species)) 
+
+time_series_CycCom_cor %>%
+  group_by(category) %>%
+  summarize(mean(correlation, na.rm = TRUE))
+```
+
+```{r}
+# Visualise results
+time_series_CycCom_cor %>%  
+  ggplot(aes(x = correlation, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+Correlations are improved when binned into cycles
+
+### All species in SABAP2, but number of observations is weighed by total number of observations for that cyclus
+
+```{r}
+# No records per cyclus
+total_cyc_1<-SABAP2HAA %>%
+  st_drop_geometry() %>%
+  group_by(cyclus) %>%
+  summarize(Totalocc = sum(occurrenceStatus == "PRESENT"))
+
+time_series_Cyc1adj <- SABAP2HAA %>%
+  st_drop_geometry() %>%
+  group_by(species, cyclus) %>%
+  summarize(occurrence = sum(occurrenceStatus == "PRESENT")) %>%
+  filter(cyclus < 5) %>% 
+  left_join(total_cyc_1) %>% mutate(occCorrect = occurrence/Totalocc)
+```
+
+```{r}
+# No records per cylus
+total_cyc_2<-UnstrucHAA %>%
+  st_drop_geometry() %>%
+  group_by(cyclus) %>%
+  summarize(Totalocc = sum(n))
+
+# No records per time-period per species
+time_series_Cyc2adj <- UnstrucHAA %>%
+  st_drop_geometry()  %>%
+  group_by(species, cyclus)  %>%
+  summarize(occurrence = sum(n)) %>% 
+  filter(cyclus < 5) %>%
+  left_join(total_cyc_2) %>% mutate(occCorrect = occurrence/Totalocc)
+```
+
+```{r}
+# Pearson Correlation for each species
+# inner_join makes sure that only species-cyclus combinations present
+# in both datasets are included
+time_series_Cycadj_cor <- time_series_Cyc1adj %>%
+  inner_join(time_series_Cyc2adj,
+             by = c("species", "cyclus"),
+             suffix = c("_1", "_2")) %>%
+  group_by(species) %>%
+  summarize(correlation = cor(occCorrect_1, occCorrect_2, method = "pearson"))
+```
+
+```{r}
+# summarise correlations per commonness group
+time_series_Cycadj_cor<-time_series_Cycadj_cor %>%
+  inner_join(SABAP2HAA %>% distinct(species, category),
+             by = join_by(species == species)) 
+
+time_series_Cycadj_cor %>%
+  group_by(category) %>%
+  summarize(mean(correlation, na.rm = TRUE))
+```
+
+```{r}
+# Visualise results
+time_series_Cycadj_cor %>%  
+  ggplot(aes(x = correlation, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(x = "Correlation",
+       y = "Number of species")
+```
+
+Correlations further improved when adjusted for the total number of observations
+
+```{r}
+# table of results
+time_series_Cycadj_cor %>%
+  filter(category %in% c("Common", "Very common", "Extremely common"),
+         correlation < 0.5) %>%
+  DT::datatable() %>%
+  DT::formatRound(columns = "correlation", digits = 2)
+```
 
 ## Trend similarity
 
@@ -1153,7 +1432,7 @@ comp_dir <- sabap2_dif %>%
 vcd::Kappa(table(comp_dir[,c(3,4)]))
 ```
 
-K value  = 0.05447, so there is a 'slight' agreement in trends in number of records over time
+K value  = 0.05644, so there is a 'slight' agreement in trends in number of records over time
 
 ```{r}
 # Calculate number of SABAP2 records per rare species per time period, and change from one period to the next
@@ -1215,7 +1494,7 @@ comp_dir <- sabap2_dif %>%
 vcd::Kappa(table(comp_dir[,c(3,4)]))
 ```
 
-Kappa value = 0.06446, and so there is a 'slight' agreement in trends in number of records over time
+Kappa value = 0.07077, and so there is a 'slight' agreement in trends in number of records over time
 
 # Occupancy rate comparrison
 
@@ -1264,7 +1543,7 @@ richness_1 %>% left_join(richness_2,
             by = join_by(pentad)) %>%
   replace_na(list(richnessUnstruc = 0)) %>%
     ggplot(aes(x = richnessSABAP2, y = richnessUnstruc)) +
-  geom_point() +
+  geom_point(color = "#1B9E77") +
   ggpubr::stat_cor(mapping = aes(color = NULL),
            label.x.npc = "centre",
            label.y.npc = "bottom",
@@ -1301,7 +1580,7 @@ species_composition_2<-species_composition_2[colnames(species_composition_1)]
 #Bray curtis
 bray_curtis <- vegan::vegdist(rbind(species_composition_1[-1],
                              species_composition_2[-1]), method = "bray")
-bray_curtis # 0.96... very different
+bray_curtis
 ```
 
-Bray curtis index of 0.66 indicates dissimilar species composition
+Bray curtis index of 0.68 indicates dissimilar species composition
