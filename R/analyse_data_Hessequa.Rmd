@@ -141,22 +141,31 @@ plot(map_obs_rich_HAA)
 Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
 
 ```{r}
+RichFullrange<-range(0,300)
+```
+
+```{r}
 UnstrucHAAinterim %>% group_by(pentad) %>%
               summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Species richness Hessequa Atlas Area - unstructured data at pentad resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+  ggtitle("Species richness in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_map_obs_rich_HAA <- obs_richness_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_map_obs_rich_HAA)
+plot(ts_map_obs_rich_HAA, y_expand = c(0.1, 0.2))
 ```
 
 ### Number of records
+
+```{r}
+RecFullrangePen<-range(1,13500)
+my_breaks = c(1, 10,100,1000, 10000)
+```
 
 ```{r, eval = FALSE}
 map_obs_HAA <- total_occ_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
@@ -165,22 +174,23 @@ plot(map_obs_HAA)
 
 Above will not work as grid (pentads) is custom, cannot map results.
 
-Below mapped records using other methods.
+Below mapped number of records using other methods. Data is log-transformed, as very skewed, with few cells having high numbers of records
+
 
 ```{r}
 UnstrucHAAinterim %>% group_by(pentad) %>%
               summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Number of records Hessequa Atlas Area - unstructured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangePen, trans = "log", breaks = my_breaks, labels = my_breaks) +
+    ggtitle("Number of records in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_obs_HAA <- total_occ_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_HAA)
+plot(ts_obs_HAA, y_expand = c(0.05, 2.3))
 ```
 
 ### Period 2015-2024 (SABAP2 species)
@@ -205,15 +215,15 @@ UnstrucHAAsppGeom %>% group_by(pentad) %>%
               summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Species richness Hessequa Atlas Area - unstructured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+    ggtitle("Species richness in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_map_obs_rich_HAA <- obs_richness_ts(HAAunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_map_obs_rich_HAA)
+plot(ts_map_obs_rich_HAA, y_expand = c(0, 0.6))
 ```
 
 ### Number of records
@@ -225,22 +235,22 @@ plot(map_obs_HAA)
 
 Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
 
-Below mapped records using other methods.
+Below mapped number of records using other methods. Data is log-transformed, as very skewed, with few cells having high numbers of records
 
 ```{r}
 UnstrucHAAsppGeom %>% group_by(pentad) %>%
               summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Number of records Hessequa Atlas Area - unstructured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangePen, trans = "log", breaks = my_breaks, labels = my_breaks) +
+    ggtitle("Number of records in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_obs_HAA<- total_occ_ts(HAAunstrucSpp, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_HAA)
+plot(ts_obs_HAA, y_expand = c(0.1, 2.6))
 ```
 
 ## Structured SABAP2 data (2015-2024)
@@ -264,15 +274,15 @@ SABAP2HAAGeom %>% group_by(pentad) %>%
               summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Species richness Hessequa Atlas Area - structured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+    ggtitle("Species richness for Hessequa Systematic Atlassing Subproject\n- structured data at pentad resolution")
 ```
 
 change over time
 
 ```{r}
 ts_obs_rich_SABAP2 <- obs_richness_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_obs_rich_SABAP2)
+plot(ts_obs_rich_SABAP2, y_expand = c(0.2, 0))
 ```
 
 ### Number of records
@@ -284,22 +294,22 @@ plot(map_obs_SABAP2)
 
 Above will not work as grid (pentads) is custom, cannot map results but can look at change over time
 
-Below mapped records using other methods.
+Below mapped number of records using other methods. Data is log-transformed, as very skewed, with few cells having high numbers of records
 
 ```{r}
 SABAP2HAAGeom %>% group_by(pentad) %>%
               summarise(n_rec = n(), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Number of records Hessequa Atlas Area - structured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangePen, trans = "log", breaks = my_breaks, labels = my_breaks) +
+    ggtitle("Number of records for Hessequa Systematic Atlassing Subproject\n- structured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_obs_SABAP2 <- total_occ_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_SABAP2)
+plot(ts_obs_SABAP2, y_expand = c(0.1, 0.1))
 ```
 
 # Load QDGC scale data
@@ -411,8 +421,8 @@ UnstrucHAAQDGCinterim %>% group_by(qdgc) %>%
   summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Species richness Hessequa Atlas Area - unstructured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+  ggtitle("Species richness in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at QDGC resolution")
 ```
 
 
@@ -420,7 +430,7 @@ Changes over time
 
 ```{r}
 ts_map_obs_rich_HAA_QDGC <- obs_richness_ts(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_map_obs_rich_HAA_QDGC)
+plot(ts_map_obs_rich_HAA_QDGC, y_expand = c(0.5, 0))
 ```
 
 ### Number of records
@@ -432,24 +442,28 @@ plot(map_obs_HAA_QDGC, title = "Number of records")
 
 Plots, but oddly. Possible issue with grid package uses. 
 
-Below mapped number of records using other methods.
+Below mapped number of records using other methods. Data is log-transformed, as very skewed, with few cells having high numbers of records
+
+```{r}
+RecFullrangeQDGC<-range(1,21000)
+my_breaks = c(1,10,100,1000,10000)
+```
 
 ```{r}
 UnstrucHAAQDGCinterim %>% group_by(qdgc) %>%
   summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Number of records Hessequa Atlas Area - unstructured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeQDGC, trans = "log", breaks = my_breaks, labels = my_breaks) +
+  ggtitle("Number of records in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at QDGC resolution")
 ```
 
 Changes over time
 
 ```{r}
 ts_obs_HAA_QDGC <- total_occ_ts(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_HAA_QDGC)
+plot(ts_obs_HAA_QDGC,y_expand = c(0.1, 0.6))
 ```
-
 
 ### Period 2015-2024 (SABAP2 species)
 
@@ -475,8 +489,8 @@ UnstrucHAAQDGCsppGeom %>% group_by(qdgc) %>%
   summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Species richness Hessequa Atlas Area - unstructured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+  ggtitle("Species richness in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at QDGC resolution")
 ```
 
 
@@ -484,7 +498,7 @@ Changes over time
 
 ```{r}
 ts_map_obs_rich_HAA_QDGC <- obs_richness_ts(HAAunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_map_obs_rich_HAA_QDGC)
+plot(ts_map_obs_rich_HAA_QDGC, y_expand = c(0.3, 0.2))
 ```
 
 ### Number of records
@@ -496,22 +510,22 @@ plot(map_obs_HAA_QDGC, title = "Number of records")
 
 Plots, but oddly. Possible issue with grid package uses. 
 
-Below mapped number of records using other methods.
+Below mapped number of records using other methods. Data is log-transformed, as very skewed, with few cells having high numbers of records
 
 ```{r}
 UnstrucHAAQDGCsppGeom %>% group_by(qdgc) %>%
   summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Number of records Hessequa Atlas Area - unstructured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeQDGC, trans = "log", breaks = my_breaks, labels = my_breaks) +
+  ggtitle("Number of records in area where Hessequa Systematic Atlassing Subproject\nis performed - unstructured data at QDGC resolution")
 ```
 
 Changes over time
 
 ```{r}
 ts_obs_HAA_QDGC <- total_occ_ts(HAAunstrucQDGCsppproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_HAA_QDGC)
+plot(ts_obs_HAA_QDGC, y_expand = c(0.1, 0.8))
 ```
 
 ## Structured SABAP2 data
@@ -537,15 +551,15 @@ SABAP2HAAQDGCGeom %>% group_by(qdgc) %>%
   summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Species richness Hessequa Atlas Area - structured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+  ggtitle("Species richness for Hessequa Systematic Atlassing Subproject\n- structured data at QDGC resolution")
 ```
 
 Changes over time
 
 ```{r}
 ts_obs_rich_SABAP2_QDGC <- obs_richness_ts(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_obs_rich_SABAP2_QDGC)
+plot(ts_obs_rich_SABAP2_QDGC, y_expand = c(0.15, 0.15))
 ```
 
 ### Number of records
@@ -557,20 +571,625 @@ plot(map_obs_SABAP2_QDGC, title = "Number of records")
 
 Plots, but oddly. Possible issue with grid package uses. 
 
-Below mapped number of records using other methods.
+Below mapped number of records using other methods. Data is log-transformed, as very skewed, with few cells having high numbers of records
 
 ```{r}
 SABAP2HAAQDGCGeom %>% group_by(qdgc) %>%
   summarise(n_rec = n(), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Number of records Hessequa Atlas Area - structured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeQDGC, trans = "log", breaks = my_breaks, labels = my_breaks) +
+  ggtitle("Number of records for Hessequa Systematic Atlassing Subproject\n- structured data at QDGC resolution")
 ```
 
 Changes over time
 
 ```{r}
 ts_obs_SABAP2_QDGC <- total_occ_ts(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_SABAP2_QDGC)
+plot(ts_obs_SABAP2_QDGC, y_expand = c(0.08, 0.09))
+```
+
+
+### Species specific indicators
+
+**Spilopelia senegalensis** - a species for which records have increased
+
+#### Quarter-degree grid cell resolution
+
+Maps of occurrence - unstructured data
+
+```{r}
+map_spec_occ_unstruc_HAA_QDGC <- spec_occ_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_HAA_QDGC, species = "Spilopelia senegalensis")
+
+UnstrucHAAQDGCinterim %>% filter(species == "Spilopelia senegalensis") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Spilopelia senegalensis - unstructured data at QDGC resolution")
+
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_HAA_QDGC <- spec_occ_ts(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_HAA_QDGC, species = "Spilopelia senegalensis")
+```
+
+Maps of occurrence - structured data
+
+```{r}
+map_spec_occ_sabap_HAA_QDGC <- spec_occ_map(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_HAA_QDGC, species = "Spilopelia senegalensis")
+
+SABAP2HAAQDGCGeom %>% filter(species == "Spilopelia senegalensis") %>%
+  group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Spilopelia senegalensis - structured data at QDGC resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_HAA_QDGC <- spec_occ_ts(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_HAA_QDGC, species = "Spilopelia senegalensis")
+```
+
+Maps of range - unstructured data
+
+```{r}
+map_spec_range_unstruc_HAA_QDGC <- spec_range_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_HAA_QDGC, species = "Spilopelia senegalensis")
+
+UnstrucHAAQDGCinterim %>% filter(species == "Spilopelia senegalensis") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Spilopelia senegalensis - unstructured data at QDGC resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_HAA_QDGC <- spec_range_ts(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_HAA_QDGC, species = "Spilopelia senegalensis")
+```
+
+Maps of range - structured data
+
+```{r}
+map_spec_range_sabap_HAA_QDGC <- spec_range_map(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_HAA_QDGC, species = "Spilopelia senegalensis")
+
+SABAP2HAAQDGCGeom %>% filter(species == "Spilopelia senegalensis") %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Spilopelia senegalensis - structured data at QDGC resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_HAA_QDGC <- spec_range_ts(HAASABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_HAA_QDGC, species = "Spilopelia senegalensis")
+```
+
+
+#### Pentad resolution
+
+Maps of occurrence - unstructured data
+
+```{r, eval = FALSE}
+map_spec_occ_unstruc_HAA_pen <- spec_occ_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+```{r}
+UnstrucHAAinterim %>% filter(species == "Spilopelia senegalensis") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Spilopelia senegalensis - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_HAA_pen <- spec_occ_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+Maps of occurrence - structured data
+
+```{r, eval = FALSE}
+map_spec_occ_sabap_HAA_pen <- spec_occ_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+```{r}
+SABAP2HAAGeom %>% filter(species == "Spilopelia senegalensis") %>%
+  group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Spilopelia senegalensis - structured data at pentad resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_HAA_pen <- spec_occ_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+Maps of range - unstructured data
+
+```{r, eval = FALSE}
+map_spec_range_unstruc_HAA_pen <- spec_range_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+```{r}
+UnstrucHAAinterim %>% filter(species == "Spilopelia senegalensis") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Spilopelia senegalensis - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_HAA_pen <- spec_range_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+Maps of range - structured data
+
+```{r, eval = FALSE}
+map_spec_range_sabap_HAA_pen <- spec_range_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+```{r}
+SABAP2HAAGeom %>% filter(species == "Spilopelia senegalensis") %>% group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Spilopelia senegalensis - structured data at pentad resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_HAA_pen <- spec_range_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_HAA_pen, species = "Spilopelia senegalensis")
+```
+
+**Anas erythrorhyncha** - a species for which records have decreased
+
+#### Quarter-degree grid cell resolution
+
+Maps of occurrence - unstructured data
+
+```{r}
+RecFullrange<-range(0,90)
+```
+
+
+```{r}
+plot(map_spec_occ_unstruc_HAA_QDGC, species = "Anas erythrorhyncha")
+
+UnstrucHAAQDGCinterim %>% filter(species == "Anas erythrorhyncha") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrange) +
+  ggtitle("Number of Anas erythrorhyncha records for area where Hessequa Systematic Atlassing Subproject is performed-\nunstructured data at QDGC resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+plot(ts_spec_occ_unstruc_HAA_QDGC, species = "Anas erythrorhyncha", y_expand = c(0, 1.4))
+```
+
+Maps of occurrence - structured data
+
+```{r}
+plot(map_spec_occ_sabap_HAA_QDGC, species = "Anas erythrorhyncha")
+
+SABAP2HAAQDGCGeom %>% filter(species == "Anas erythrorhyncha") %>%
+  group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrange) +
+  ggtitle("Number of Anas erythrorhyncha records for area where Hessequa Systematic Atlassing Subproject is performed-\nstructured data at QDGC resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+plot(ts_spec_occ_sabap_HAA_QDGC, species = "Anas erythrorhyncha")
+```
+
+Maps of range - unstructured data
+
+```{r}
+plot(map_spec_range_unstruc_HAA_QDGC, species = "Anas erythrorhyncha")
+
+UnstrucHAAQDGCinterim %>% filter(species == "Anas erythrorhyncha") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Anas erythrorhyncha - unstructured data at QDGC resolution")
+```
+
+Time series of range - unstructured data
+
+```{r}
+plot(ts_spec_range_unstruc_HAA_QDGC, species = "Anas erythrorhyncha", y_expand = c(0, 5.5))
+```
+
+Maps of range - structured data
+
+```{r}
+plot(map_spec_range_sabap_HAA_QDGC, species = "Anas erythrorhyncha")
+
+SABAP2HAAQDGCGeom %>% filter(species == "Anas erythrorhyncha") %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Anas erythrorhyncha - structured data at QDGC resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+plot(ts_spec_range_sabap_HAA_QDGC, species = "Anas erythrorhyncha",  y_expand = c(0, 2.7))
+```
+
+#### Pentad resolution
+
+Maps of occurrence - unstructured data
+
+```{r, eval = FALSE}
+map_spec_occ_unstruc_HAA_pen <- spec_occ_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_HAA_pen, species = "Anas erythrorhyncha")
+```
+
+```{r}
+UnstrucHAAinterim %>% filter(species == "Anas erythrorhyncha") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrange) +
+  ggtitle("Number of Anas erythrorhyncha records for area where Hessequa Systematic Atlassing Subproject is performed-\nunstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_HAA_pen <- spec_occ_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_HAA_pen, species = "Anas erythrorhyncha", y_expand = c(0, 2.5))
+```
+
+Maps of occurrence - structured data
+
+```{r, eval = FALSE}
+map_spec_occ_sabap_HAA_pen <- spec_occ_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_HAA_pen, species = "Anas erythrorhyncha")
+```
+
+```{r}
+SABAP2HAAGeom %>% filter(species == "Anas erythrorhyncha") %>%
+  group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrange) +
+  ggtitle("Number of Anas erythrorhyncha records for area where Hessequa Systematic Atlassing Subproject is performed-\nstructured data at pentad resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_HAA_pen <- spec_occ_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_HAA_pen, species = "Anas erythrorhyncha", y_expand = c(0, 0.1))
+```
+
+Maps of range - unstructured data
+
+```{r, eval = FALSE}
+map_spec_range_unstruc_HAA_pen <- spec_range_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_HAA_pen, species = "Anas erythrorhyncha")
+```
+
+```{r}
+UnstrucHAAinterim %>% filter(species == "Anas erythrorhyncha") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Anas erythrorhyncha - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_HAA_pen <- spec_range_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_HAA_pen, species = "Anas erythrorhyncha", y_expand = c(0, 4.7))
+```
+
+Maps of range - structured data
+
+```{r, eval = FALSE}
+map_spec_range_sabap_HAA_pen <- spec_range_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_HAA_pen, species = "Anas erythrorhynchas")
+```
+
+```{r}
+SABAP2HAAGeom %>% filter(species == "Anas erythrorhyncha") %>% group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Anas erythrorhyncha - structured data at pentad resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_HAA_pen <- spec_range_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_HAA_pen, species = "Anas erythrorhyncha", y_expand = c(0, 0.1))
+```
+
+**Turtur tympanistria** - a species for which records have remained stable
+
+#### Quarter degree grid cell resolution
+
+Maps of occurrence - unstructured data
+
+```{r}
+plot(map_spec_occ_unstruc_HAA_QDGC, species = "Turtur tympanistria")
+
+UnstrucHAAQDGCinterim %>% filter(species == "Turtur tympanistria") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Turtur tympanistria - unstructured data at QDGC resolution")
+
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+plot(ts_spec_occ_unstruc_HAA_QDGC, species = "Turtur tympanistria")
+```
+
+Maps of occurrence - structured data
+
+```{r}
+plot(map_spec_occ_sabap_HAA_QDGC, species = "Turtur tympanistria")
+
+SABAP2HAAQDGCGeom %>% filter(species == "Turtur tympanistria") %>%
+  group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Turtur tympanistria - structured data at QDGC resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+plot(ts_spec_occ_sabap_HAA_QDGC, species = "Turtur tympanistria")
+```
+
+Maps of range - unstructured data
+
+```{r}
+plot(map_spec_range_unstruc_HAA_QDGC, species = "Turtur tympanistria")
+
+UnstrucHAAQDGCinterim %>% filter(species == "Turtur tympanistria") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Turtur tympanistria - unstructured data at QDGC resolution")
+```
+
+Time series of range - unstructured data
+
+```{r}
+plot(ts_spec_range_unstruc_HAA_QDGC, species = "Turtur tympanistria")
+```
+
+Maps of range - structured data
+
+```{r}
+plot(map_spec_range_sabap_HAA_QDGC, species = "Turtur tympanistria")
+
+SABAP2HAAQDGCGeom %>% filter(species == "Turtur tympanistria") %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Turtur tympanistria - structured data at QDGC resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+plot(ts_spec_range_sabap_HAA_QDGC, species = "Turtur tympanistria")
+```
+
+
+#### Pentad resolution
+
+Maps of occurrence - unstructured data
+
+```{r, eval = FALSE}
+map_spec_occ_unstruc_HAA_pen <- spec_occ_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_HAA_pen, species = "Turtur tympanistria")
+```
+
+```{r}
+UnstrucHAAinterim %>% filter(species == "Turtur tympanistria") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Turtur tympanistria - unstructured data at pentad resolution")
+```
+
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_HAA_pen <- spec_occ_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_HAA_pen, species = "Turtur tympanistria")
+```
+
+Maps of occurrence - structured data
+
+```{r, eval = FALSE}
+map_spec_occ_sabap_HAA_pen <- spec_occ_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_HAA_pen, species = "Turtur tympanistria")
+```
+
+```{r}
+SABAP2HAAGeom %>% filter(species == "Turtur tympanistria") %>%
+  group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Turtur tympanistria - structured data at pentad resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_HAA_pen <- spec_occ_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_HAA_pen, species = "Turtur tympanistria")
+```
+
+Maps of range - unstructured data
+
+```{r, eval = FALSE}
+map_spec_range_unstruc_HAA_pen <- spec_range_map(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_HAA_pen, species = "Turtur tympanistria")
+```
+
+```{r}
+UnstrucHAAinterim %>% filter(species == "Turtur tympanistria") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Turtur tympanistria - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_HAA_pen <- spec_range_ts(HAAunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_HAA_pen, species = "Turtur tympanistria")
+```
+
+Maps of range - structured data
+
+```{r, eval = FALSE}
+map_spec_range_sabap_HAA_pen <- spec_range_map(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_HAA_pen, species = "Turtur tympanistria")
+```
+
+```{r}
+SABAP2HAAGeom %>% filter(species == "Turtur tympanistria") %>% group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Turtur tympanistria - structured data at pentad resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_HAA_pen <- spec_range_ts(HAASABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_HAA_pen, species = "Turtur tympanistria")
 ```
