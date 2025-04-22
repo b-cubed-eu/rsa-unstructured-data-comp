@@ -141,19 +141,23 @@ plot(map_obs_rich_WC)
 Above will not work as grid (pentads) is custom, cannot map results. Below mapped richness using other methods.
 
 ```{r}
+RichFullrange<-range(0,350)
+```
+
+```{r}
 UnstrucWCinterim %>% group_by(pentad) %>%
               summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Species richness Western Cape - unstructured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+    ggtitle("Species richness in Western Cape\n- unstructured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_map_obs_rich_WC <- obs_richness_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_map_obs_rich_WC)
+plot(ts_map_obs_rich_WC, y_expand = c(0.5, 0.3))
 ```
 
 ### Number of records
@@ -168,19 +172,25 @@ Above will not work as grid (pentads) is custom, cannot map results but can look
 Below mapped records using other methods.
 
 ```{r}
+ObsFullrange<-range(1,170000)
+my_breaks = c(1,10,100,1000,10000,100000)
+```
+
+
+```{r}
 UnstrucWCinterim %>% group_by(pentad) %>%
               summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Number of records Western Cape - unstructured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = ObsFullrange, trans = "log", breaks = my_breaks, labels = my_breaks) +
+    ggtitle("Number of records in Western Cape\n- unstructured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_obs_WC <- total_occ_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_WC)
+plot(ts_obs_WC, y_expand = c(0, 0.1))
 ```
 
 ### Period 2008-2024 (SABAP2 species)
@@ -232,7 +242,7 @@ UnstrucWCsppGeom %>% group_by(pentad) %>%
               summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
+    scale_fill_viridis_c(option = "inferno", limits = RecFullrangePen, trans = "log", breaks = my_breaks, labels = my_breaks) +
     ggtitle("Number of records Western Cape - unstructured data at pentad resolution")
 ```
 
@@ -264,15 +274,15 @@ SABAP2WCGeom %>% group_by(pentad) %>%
               summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Species richness Western Cape - structured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+    ggtitle("Species richness in Western Cape\n- structured data at pentad resolution")
 ```
 
 change over time
 
 ```{r}
 ts_obs_rich_SABAP2 <- obs_richness_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_obs_rich_SABAP2)
+plot(ts_obs_rich_SABAP2, y_expand = c(0.4, 0.9))
 ```
 
 ### Number of records
@@ -291,15 +301,15 @@ SABAP2WCGeom %>% group_by(pentad) %>%
               summarise(n_rec = n(), .groups = "drop") %>%
   ggplot() +
     geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-    scale_fill_viridis_c(option = "inferno") +
-    ggtitle("Number of records Western Cape - structured data at pentad resolution")
+    scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = ObsFullrange, trans = "log", breaks = my_breaks, labels = my_breaks) +
+    ggtitle("Number of records for Western Cape\n-structured data at pentad resolution")
 ```
 
 Change over time
 
 ```{r}
 ts_obs_SABAP2 <- total_occ_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_SABAP2)
+plot(ts_obs_SABAP2, y_expand = c(0.1, 1.8))
 ```
 
 # Load QDGC scale data
@@ -358,7 +368,7 @@ glimpse(SABAP2WCQDGCGrp)
 
 Unstructured data from GBIF for birds recorded in pentads of Western Cape between 2008 and 2024. These data have been converted to QDGC scale. There are 247 QDGC in the area.
 
-It was noted that there were a number of species included in the unstructured data that were not in the structured data. This was for a number of reasons including likely misidentifications, and also as for some species SABAP2 data does not seem to be flowing to GBIF.
+It was noted that there were a number of species included in the unstructured data that were not in the structured data. This was for a number of reasons including likely missidentifications, and also as for some species SABAP2 data does not seem to be flowing to GBIF.
 
 Due to delays in data flowing into GBIF the data for 2024 are not complete.
 
@@ -411,8 +421,8 @@ UnstrucWCQDGCinterim %>% group_by(qdgc) %>%
   summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Species richness Western Cape - unstructured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+  ggtitle("Species richness in Western Cape\n- unstructured data at QDGC resolution")
 ```
 
 
@@ -420,7 +430,7 @@ Changes over time
 
 ```{r}
 ts_map_obs_rich_WC_QDGC <- obs_richness_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_map_obs_rich_WC_QDGC)
+plot(ts_map_obs_rich_WC_QDGC, y_expand = c(0.6, 0.3))
 ```
 
 ### Number of records
@@ -439,8 +449,8 @@ UnstrucWCQDGCinterim %>% group_by(qdgc) %>%
   summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Number of records Western Cape - unstructured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = ObsFullrange, trans = "log", breaks = my_breaks, labels = my_breaks) +
+  ggtitle("Number of records for the Western Cape\n- unstructured data at QDGC resolution")
 ```
 
 Changes over time
@@ -503,7 +513,7 @@ UnstrucWCQDGCsppGeom %>% group_by(qdgc) %>%
   summarise(n_rec = sum(n), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
+  scale_fill_viridis_c(option = "inferno", trans = "log", breaks = my_breaks, labels = my_breaks) +
   ggtitle("Number of records Western Cape - unstructured data at QDGC resolution")
 ```
 
@@ -537,15 +547,15 @@ SABAP2WCQDGCGeom %>% group_by(qdgc) %>%
   summarise(n_species = n_distinct(species), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_species), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Species richness Western Cape - structured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nspecies", limits = RichFullrange) +
+  ggtitle("Species richness in Western Cape\n- structured data at QDGC resolution")
 ```
 
 Changes over time
 
 ```{r}
 ts_obs_rich_SABAP2_QDGC <- obs_richness_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium") 
-plot(ts_obs_rich_SABAP2_QDGC)
+plot(ts_obs_rich_SABAP2_QDGC, y_expand = c(0.5, 0.9))
 ```
 
 ### Number of records
@@ -564,13 +574,648 @@ SABAP2WCQDGCGeom %>% group_by(qdgc) %>%
   summarise(n_rec = n(), .groups = "drop") %>%
   ggplot() +
   geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
-  scale_fill_viridis_c(option = "inferno") +
-  ggtitle("Number of records Western Cape - structured data at QDGC resolution")
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = ObsFullrange, trans = "log", breaks = my_breaks, labels = my_breaks) +
+  ggtitle("Number of records for the Western Cape\n-structured data at QDGC resolution")
 ```
 
 Changes over time
 
 ```{r}
 ts_obs_SABAP2_QDGC <- total_occ_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
-plot(ts_obs_SABAP2_QDGC)
+plot(ts_obs_SABAP2_QDGC, y_expand = c(0, 1.5))
+```
+
+
+### Species specific indicators
+
+**Pycnonotus capensis** - a species for which records have increased
+
+#### Quarter-degree grid cell resolution
+
+Maps of occurrence - unstructured data
+
+```{r}
+map_spec_occ_unstruc_WC_QDGC <- spec_occ_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_WC_QDGC, species = "Pycnonotus capensis")
+
+UnstrucWCQDGCinterim %>% filter(species == "Pycnonotus capensis") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Pycnonotus capensis - unstructured data at QDGC resolution")
+
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_WC_QDGC <- spec_occ_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_WC_QDGC, species = "Pycnonotus capensis")
+```
+
+Maps of occurrence - structured data
+
+```{r}
+map_spec_occ_sabap_WC_QDGC <- spec_occ_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_WC_QDGC, species = "Pycnonotus capensis")
+
+SABAP2WCQDGCGeom %>% filter(species == "Pycnonotus capensis") %>%
+  group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Pycnonotus capensis - structured data at QDGC resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_WC_QDGC <- spec_occ_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_WC_QDGC, species = "Pycnonotus capensis")
+```
+
+Maps of range - unstructured data
+
+```{r}
+map_spec_range_unstruc_WC_QDGC <- spec_range_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_WC_QDGC, species = "Pycnonotus capensis")
+
+UnstrucWCQDGCinterim %>% filter(species == "Pycnonotus capensis") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Pycnonotus capensis - unstructured data at QDGC resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_WC_QDGC <- spec_range_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_WC_QDGC, species = "Pycnonotus capensis")
+```
+
+Maps of range - structured data
+
+```{r}
+map_spec_range_sabap_WC_QDGC <- spec_range_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_WC_QDGC, species = "Pycnonotus capensis")
+
+SABAP2WCQDGCGeom %>% filter(species == "Pycnonotus capensis") %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Pycnonotus capensis - structured data at QDGC resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_WC_QDGC <- spec_range_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_WC_QDGC, species = "Pycnonotus capensis")
+```
+
+
+#### Pentad resolution
+
+Maps of occurrence - unstructured data
+
+```{r, eval = FALSE}
+map_spec_occ_unstruc_WC_pen <- spec_occ_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_WC_pen, species = "Pycnonotus capensis")
+```
+
+```{r}
+UnstrucWCinterim %>% filter(species == "Pycnonotus capensis") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Pycnonotus capensis - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_WC_pen <- spec_occ_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_WC_pen, species = "Pycnonotus capensis")
+```
+
+Maps of occurrence - structured data
+
+```{r, eval = FALSE}
+map_spec_occ_sabap_WC_pen <- spec_occ_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_WC_pen, species = "Pycnonotus capensis")
+```
+
+```{r}
+SABAP2WCGeom %>% filter(species == "Pycnonotus capensis") %>%
+  group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Pycnonotus capensis - structured data at pentad resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_WC_pen <- spec_occ_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_WC_pen, species = "Pycnonotus capensis")
+```
+
+Maps of range - unstructured data
+
+```{r, eval = FALSE}
+map_spec_range_unstruc_WC_pen <- spec_range_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_WC_pen, species = "Pycnonotus capensis")
+```
+
+```{r}
+UnstrucWCinterim %>% filter(species == "Pycnonotus capensis") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Pycnonotus capensis - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_WC_pen <- spec_range_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_WC_pen, species = "Pycnonotus capensis")
+```
+
+Maps of range - structured data
+
+```{r, eval = FALSE}
+map_spec_range_sabap_WC_pen <- spec_range_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_WC_pen, species = "Pycnonotus capensis")
+```
+
+```{r}
+SABAP2WCGeom %>% filter(species == "Pycnonotus capensis") %>% group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Pycnonotus capensis - structured data at pentad resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_WC_pen <- spec_range_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_WC_pen, species = "Pycnonotus capensis")
+```
+
+**Lamprotornis bicolor** - a species for which records have decreased
+
+#### Quarter-degree grid cell resolution
+
+Maps of occurrence - unstructured data
+
+RecFullrangeLB<-range(0,1200)
+
+```{r}
+map_spec_occ_unstruc_WC_QDGC <- spec_occ_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_WC_QDGC, species = "Lamprotornis bicolor")
+
+UnstrucWCQDGCinterim %>% filter(species == "Lamprotornis bicolor") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeLB) +
+  ggtitle("Number of records for Lamprotornis bicolor\n- unstructured data at QDGC resolution")
+
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_WC_QDGC <- spec_occ_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_WC_QDGC, species = "Lamprotornis bicolor", y_expand = c(0, 0.1))
+```
+
+Maps of occurrence - structured data
+
+```{r}
+map_spec_occ_sabap_WC_QDGC <- spec_occ_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_WC_QDGC, species = "Lamprotornis bicolor")
+
+SABAP2WCQDGCGeom %>% filter(species == "Lamprotornis bicolor") %>%
+  group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeLB) +
+  ggtitle("Number of records for Lamprotornis bicolor\n- structured data at QDGC resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_WC_QDGC <- spec_occ_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_WC_QDGC, species = "Lamprotornis bicolor", y_expand = c(0, 0.2))
+```
+
+Maps of range - unstructured data
+
+```{r}
+map_spec_range_unstruc_WC_QDGC <- spec_range_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_WC_QDGC, species = "Lamprotornis bicolor")
+
+UnstrucWCQDGCinterim %>% filter(species == "Lamprotornis bicolor") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Lamprotornis bicolor - unstructured data at QDGC resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_WC_QDGC <- spec_range_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_WC_QDGC, species = "Lamprotornis bicolor", y_expand = c(0, 3.3))
+```
+
+Maps of range - structured data
+
+```{r}
+map_spec_range_sabap_WC_QDGC <- spec_range_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_WC_QDGC, species = "Lamprotornis bicolor")
+
+SABAP2WCQDGCGeom %>% filter(species == "Lamprotornis bicolor") %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Lamprotornis bicolor - structured data at QDGC resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_WC_QDGC <- spec_range_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_WC_QDGC, species = "Lamprotornis bicolor", y_expand = c(0, 2.8))
+```
+
+
+#### Pentad resolution
+
+Maps of occurrence - unstructured data
+
+```{r, eval = FALSE}
+map_spec_occ_unstruc_WC_pen <- spec_occ_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_WC_pen, species = "Lamprotornis bicolor")
+```
+
+```{r}
+UnstrucWCinterim %>% filter(species == "Lamprotornis bicolor") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeLB) +
+  ggtitle("Number of records for Lamprotornis bicolor\n- unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_WC_pen <- spec_occ_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_WC_pen, species = "Lamprotornis bicolor", y_expand = c(0, 0.3))
+```
+
+Maps of occurrence - structured data
+
+```{r, eval = FALSE}
+map_spec_occ_sabap_WC_pen <- spec_occ_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_WC_pen, species = "Lamprotornis bicolor")
+```
+
+```{r}
+SABAP2WCGeom %>% filter(species == "Lamprotornis bicolor") %>%
+  group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno", name = "Number of\nrecords", limits = RecFullrangeLB) +
+  ggtitle("Number of records for Lamprotornis bicolor\n- structured data at pentad resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_WC_pen <- spec_occ_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_WC_pen, species = "Lamprotornis bicolor", y_expand = c(0, 0.3))
+```
+
+Maps of range - unstructured data
+
+```{r, eval = FALSE}
+map_spec_range_unstruc_WC_pen <- spec_range_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_WC_pen, species = "Lamprotornis bicolor")
+```
+
+```{r}
+UnstrucWCinterim %>% filter(species == "Lamprotornis bicolor") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Lamprotornis bicolor - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_WC_pen <- spec_range_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_WC_pen, species = "Lamprotornis bicolor", y_expand = c(0, 0.8))
+```
+
+Maps of range - structured data
+
+```{r, eval = FALSE}
+map_spec_range_sabap_WC_pen <- spec_range_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_WC_pen, species = "Lamprotornis bicolor")
+```
+
+```{r}
+SABAP2WCGeom %>% filter(species == "Lamprotornis bicolor") %>% group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Lamprotornis bicolor - structured data at pentad resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_WC_pen <- spec_range_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_WC_pen, species = "Lamprotornis bicolor", y_expand = c(0, 0))
+```
+
+**Ardea alba** - a species for which records has been stable
+
+#### Quarter-degree grid cell resolution
+
+Maps of occurrence - unstructured data
+
+```{r}
+map_spec_occ_unstruc_WC_QDGC <- spec_occ_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_WC_QDGC, species = "Ardea alba")
+
+UnstrucWCQDGCinterim %>% filter(species == "Ardea alba") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Ardea alba - unstructured data at QDGC resolution")
+
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_WC_QDGC <- spec_occ_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_WC_QDGC, species = "Ardea alba")
+```
+
+Maps of occurrence - structured data
+
+```{r}
+map_spec_occ_sabap_WC_QDGC <- spec_occ_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_WC_QDGC, species = "Ardea alba")
+
+SABAP2WCQDGCGeom %>% filter(species == "Ardea alba") %>%
+  group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Ardea alba - structured data at QDGC resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_WC_QDGC <- spec_occ_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_WC_QDGC, species = "Ardea alba")
+```
+
+Maps of range - unstructured data
+
+```{r}
+map_spec_range_unstruc_WC_QDGC <- spec_range_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_WC_QDGC, species = "Ardea alba")
+
+UnstrucWCQDGCinterim %>% filter(species == "Ardea alba") %>% group_by(qdgc) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Ardea alba - unstructured data at QDGC resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_WC_QDGC <- spec_range_ts(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_WC_QDGC, species = "Ardea alba")
+```
+
+Maps of range - structured data
+
+```{r}
+map_spec_range_sabap_WC_QDGC <- spec_range_map(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_WC_QDGC, species = "Ardea alba")
+
+SABAP2WCQDGCGeom %>% filter(species == "Ardea alba") %>% group_by(qdgc) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Ardea alba - structured data at QDGC resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_WC_QDGC <- spec_range_ts(WCSABAP2QDGC, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_WC_QDGC, species = "Ardea alba")
+```
+
+
+#### Pentad resolution
+
+Maps of occurrence - unstructured data
+
+```{r, eval = FALSE}
+map_spec_occ_unstruc_WC_pen <- spec_occ_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_unstruc_WC_pen, species = "Ardea alba")
+```
+
+```{r}
+UnstrucWCinterim %>% filter(species == "Ardea alba") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Ardea alba - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_occ_unstruc_WC_pen <- spec_occ_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_unstruc_WC_pen, species = "Ardea alba")
+```
+
+Maps of occurrence - structured data
+
+```{r, eval = FALSE}
+map_spec_occ_sabap_WC_pen <- spec_occ_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_occ_sabap_WC_pen, species = "Ardea alba")
+```
+
+```{r}
+SABAP2WCGeom %>% filter(species == "Ardea alba") %>%
+  group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  ggplot() +
+  geom_sf(aes(fill = n_rec), col = alpha("white", 0)) +
+  scale_fill_viridis_c(option = "inferno") +
+  ggtitle("Number of records Ardea alba - structured data at pentad resolution")
+```
+
+Time series of occurrence - structured data
+
+```{r}
+ts_spec_occ_sabap_WC_pen <- spec_occ_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_occ_sabap_WC_pen, species = "Ardea alba")
+```
+
+Maps of range - unstructured data
+
+```{r, eval = FALSE}
+map_spec_range_unstruc_WC_pen <- spec_range_map(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_unstruc_WC_pen, species = "Ardea alba")
+```
+
+```{r}
+UnstrucWCinterim %>% filter(species == "Ardea alba") %>% group_by(pentad) %>%
+  summarise(n_rec = sum(n), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = presence), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Ardea alba - unstructured data at pentad resolution")
+```
+
+Time series of occurrence - unstructured data
+
+```{r}
+ts_spec_range_unstruc_WC_pen <- spec_range_ts(WCunstruc, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_unstruc_WC_pen, species = "Ardea alba")
+```
+
+Maps of range - structured data
+
+```{r, eval = FALSE}
+map_spec_range_sabap_WC_pen <- spec_range_map(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(map_spec_range_sabap_WC_pen, species = "Ardea alba")
+```
+
+```{r}
+SABAP2WCGeom %>% filter(species == "Ardea alba") %>% group_by(pentad) %>%
+  summarise(n_rec = n(), .groups = "drop") %>%
+  mutate(presence=case_when((n_rec > 0)~TRUE,
+                                  TRUE~FALSE)) %>%
+  ggplot() +
+  geom_sf(aes(fill = "presence"), col = alpha("white", 0)) +
+  scale_fill_manual(values = "#F1ED6FFF") +
+  ggtitle("Range of Ardea alba - structured data at pentad resolution")
+```
+
+Time series of range - structured data
+
+```{r}
+ts_spec_range_sabap_WC_pen <- spec_range_ts(WCSABAP2, cell_size = 0.08333333, level = "cube", region = "South Africa", ne_scale = "medium")
+
+plot(ts_spec_range_sabap_WC_pen, species = "Ardea alba")
 ```
