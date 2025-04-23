@@ -256,7 +256,7 @@ birdsHAAdf<-birdsHAAsfreproj %>% group_by(speciesKey, species, family) %>% nest(
 birdGcubeHAAYearPentad<-map_grid_designation(df = birdsHAAdf, nested = FALSE)
 ```
 
-# structure cube in the same way as rgbif
+structure cube in the same way as rgbif
 
 ```{r}
 birdcubeHAAYearPentad<-birdGcubeHAAYearPentad %>%filter(n != 0) %>% mutate (year = case_when(
