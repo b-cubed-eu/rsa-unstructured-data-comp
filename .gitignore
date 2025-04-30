@@ -3,9 +3,10 @@
 .RData
 .Ruserdata
 
+*.html
+test_gcube.Rmd
+QDGC_richness_Western_Cape_b3gbi
+prepare_data_Western_Cape_gcube_draft.Rmd
+prepare_data_Hessequa_manual_pentad_cube.Rmd
 explore_sabap2_data_Hessequa_draft.Rmd
 prepare_data_RSA.Rmd
-testgCube.R
-prepare_data_Hessequa_manual_pentad_cube.Rmd
-prepare_data_Hessequa_manual_pentad_cube.html
-prepare_data_Western_Cape_gcube_draft.Rmd
