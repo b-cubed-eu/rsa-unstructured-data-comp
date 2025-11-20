@@ -23,7 +23,7 @@ Several R packages need to be installed from R Cran or GitHub. Executing the scr
 ### Install packages from R Cran
 
 ```{r}
-packages = c("tidyverse", "here"", "sf", "rgbif", "iNEXT",   "ggpubr", "RColorBrewer", "corrplot", "devtools")
+packages = c("tidyverse", "here"", "sf", "rgbif", "iNEXT", "ggpubr", "RColorBrewer", "devtools", "magrittr")
 ```
 
 ```{r}
