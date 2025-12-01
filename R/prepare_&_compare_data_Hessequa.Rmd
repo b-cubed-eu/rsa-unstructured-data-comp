@@ -18,16 +18,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r, warning=FALSE, message=FALSE}
 # Load packages
-library(tidyverse)    # Data wrangling and visualisation
-library(here)         # Relative paths
-library(sf)           # Work with spatial data
-library(rgbif)        # To request occurrence cubes
-library(gcube)        # To create a bespoke cube 
-library(iNEXT)        # To calculate sample coverage
-library(b3gbi)        # To calculate indicators
-library(ggpubr)       # Correlations
+library(tidyverse) # Data wrangling and visualisation
+library(magrittr) # Pipe delimiter
+library(here) # Relative paths
+library(sf) # Work with spatial data
+library(rgbif) # To request occurrence cubes
+library(gcube) # To create a bespoke cube
+library(iNEXT) # To calculate sample coverage
+library(b3gbi) # To calculate indicators
+library(ggpubr) # Correlations
 library(RColorBrewer) # Colour palette
-library(corrplot)     # Correlation plots
 ```
 
 # Goal
@@ -99,11 +99,15 @@ We read in the dataset.
 
 ```{r}
 # Read SABAP2 data as tab delimited
-SABAP2WCraw <- read_delim(file.path(data_path,
-                                     "0031129-250811113504898",
-                                     "occurrence.txt"),
-                   delim = "\t",
-                   show_col_types = FALSE)
+SABAP2WCraw <- read_delim(
+  file.path(
+    data_path,
+    "0031129-250811113504898",
+    "occurrence.txt"
+  ),
+  delim = "\t",
+  show_col_types = FALSE
+)
 
 # Explore dataframe
 glimpse(SABAP2WCraw)
@@ -127,8 +131,44 @@ Data for the Western Cape were selected (level1Gid = 'ZAF.9_1')
 Note, personal details (usernname, password and email address) have been removed from script below
 
 ```{r, eval = FALSE}
-# yearly cube at qdgc resolution
-occ_download_sql(user = "", pwd = "", email = "", "SELECT \"year\", GBIF_EQDGCode(2, decimalLatitude, decimalLongitude, COALESCE(coordinateUncertaintyInMeters, 27000)) AS qdgcCode,speciesKey,species, \"order\", family, genus, COUNT(*) AS n,MIN(COALESCE(coordinateUncertaintyInMeters, 27000)) AS minCoordinateUncertaintyInMeters, IF(ISNULL(\"order\"), NULL, SUM(COUNT(*)) OVER (PARTITION BY \"order\")) AS orderCount, IF(ISNULL(family), NULL, SUM(COUNT(*)) OVER (PARTITION BY family)) AS familyCount, IF(ISNULL(genus), NULL, SUM(COUNT(*)) OVER (PARTITION BY genus)) AS genusCount FROM occurrence WHERE class = 'Aves' AND occurrenceStatus = 'PRESENT'AND (coordinateUncertaintyInMeters <= 27000 OR coordinateUncertaintyInMeters IS NULL) AND NOT occurrence.basisofrecord IN ('FOSSIL_SPECIMEN', 'LIVING_SPECIMEN') AND NOT ARRAY_CONTAINS(issue, 'ZERO_COORDINATE') AND NOT ARRAY_CONTAINS(issue, 'COORDINATE_OUT_OF_RANGE') AND NOT ARRAY_CONTAINS(issue, 'COORDINATE_INVALID') AND NOT ARRAY_CONTAINS(issue, 'COUNTRY_COORDINATE_MISMATCH') AND level1Gid = 'ZAF.9_1' AND \"year\" >= 2015 AND \"year\" <= 2023 AND speciesKey IS NOT NULL AND decimalLatitude IS NOT NULL AND decimalLongitude IS NOT NULL AND collectionCode != 'SABAP2' GROUP BY \"year\", qdgcCode, speciesKey, \"order\", family, genus, species ORDER BY \"year\" ASC, qdgcCode ASC, speciesKey ASC")
+occ_download_sql(
+  user = "", pwd = "", email = "",
+  "SELECT \"year\", GBIF_EQDGCode(2, decimalLatitude, decimalLongitude,
+                 COALESCE(coordinateUncertaintyInMeters, 27000)) AS qdgcCode,
+                 speciesKey, species,\"order\", family, genus, COUNT(*) AS n,
+                 MIN(COALESCE(coordinateUncertaintyInMeters, 27000)) AS minCoordinateUncertaintyInMeters,
+                 IF(ISNULL(\"order\"), NULL, SUM(COUNT(*)) OVER (PARTITION BY \"order\")) AS orderCount,
+                 IF(ISNULL(family), NULL, SUM(COUNT(*)) OVER (PARTITION BY family)) AS familyCount,
+                 IF(ISNULL(genus), NULL, SUM(COUNT(*)) OVER (PARTITION BY genus)) AS genusCount
+                 FROM occurrence
+                 WHERE class = 'Aves' AND
+                 occurrenceStatus = 'PRESENT'AND
+                 (coordinateUncertaintyInMeters <= 27000 OR coordinateUncertaintyInMeters IS NULL) AND NOT
+                 occurrence.basisofrecord IN ('FOSSIL_SPECIMEN', 'LIVING_SPECIMEN') AND NOT
+                 ARRAY_CONTAINS(issue, 'ZERO_COORDINATE') AND NOT
+                 ARRAY_CONTAINS(issue, 'COORDINATE_OUT_OF_RANGE') AND NOT
+                 ARRAY_CONTAINS(issue, 'COORDINATE_INVALID') AND NOT
+                 ARRAY_CONTAINS(issue, 'COUNTRY_COORDINATE_MISMATCH') AND
+                 level1Gid = 'ZAF.9_1'
+                 AND \"year\" >= 2015
+                 AND \"year\" <= 2023 A
+                 ND speciesKey IS NOT NULL
+                 AND decimalLatitude IS NOT NULL
+                 AND decimalLongitude IS NOT NULL
+                 AND collectionCode != 'SABAP2'
+                 GROUP BY
+                 \"year\",
+                 qdgcCode,
+                 speciesKey,
+                 \"order\",
+                 family,
+                 genus,
+                 species
+                 ORDER BY
+                 \"year\" ASC,
+                 qdgcCode ASC,
+                 speciesKey ASC"
+)
 ```
 
 The data are downloaded and stored under *./data/raw*.
@@ -141,10 +181,14 @@ We read in the dataset.
 
 ```{r}
 # Read in datacube from CSV
-birdcubeWCYearQDGC <- read_delim(file.path(data_path,
-                                     "0002416-251025141854904", "0002416-251025141854904.csv"),
-                   delim = "\t",
-                   show_col_types = FALSE)
+birdcubeWCYearQDGC <- read_delim(
+  file.path(
+    data_path,
+    "0002416-251025141854904", "0002416-251025141854904.csv"
+  ),
+  delim = "\t",
+  show_col_types = FALSE
+)
 
 # Explore dataframe
 glimpse(birdcubeWCYearQDGC)
@@ -161,17 +205,19 @@ The query had the same specifications as the cube query, except 8 000 m (8km) wa
 Note, personal details (usernname, password and email address) have been removed from script below
 
 ```{r}
-occ_download(user = "", pwd = "", email = "", pred("taxonKey", 212), 
-             pred("occurrenceStatus", "PRESENT"), 
-             pred_or(pred_lte("coordinateUncertaintyInMeters", 8000),pred_isnull("coordinateUncertaintyInMeters")), 
-             pred("gadm", "ZAF.9_1"), 
-             pred_and(pred_gte("year","2015"), pred_lte("year", "2023")), 
-             pred_notnull("speciesKey"), 
-             pred_notnull("decimalLatitude"), 
-             pred_notnull("decimalLongitude"), 
-             pred_not(pred_in("collectionCode", "SABAP2")), 
-             pred_not(pred_in("basisOfRecord", c("FOSSIL_SPECIMEN", "LIVING_SPECIMEN"))),
-             pred_not(pred_in("issue", c("ZERO_COORDINATE", "COORDINATE_OUT_OF_RANGE", "COORDINATE_INVALID", "COUNTRY_COORDINATE_MISMATCH"))))
+occ_download(
+  user = "", pwd = "", email = "", pred("taxonKey", 212),
+  pred("occurrenceStatus", "PRESENT"),
+  pred_or(pred_lte("coordinateUncertaintyInMeters", 8000), pred_isnull("coordinateUncertaintyInMeters")),
+  pred("gadm", "ZAF.9_1"),
+  pred_and(pred_gte("year", "2015"), pred_lte("year", "2023")),
+  pred_notnull("speciesKey"),
+  pred_notnull("decimalLatitude"),
+  pred_notnull("decimalLongitude"),
+  pred_not(pred_in("collectionCode", "SABAP2")),
+  pred_not(pred_in("basisOfRecord", c("FOSSIL_SPECIMEN", "LIVING_SPECIMEN"))),
+  pred_not(pred_in("issue", c("ZERO_COORDINATE", "COORDINATE_OUT_OF_RANGE", "COORDINATE_INVALID", "COUNTRY_COORDINATE_MISMATCH")))
+)
 ```
 
 **Unstructured bird data Western Cape**: 0002426-251025141854904.zip
@@ -182,11 +228,15 @@ We read in the dataset.
 
 ```{r}
 # Read unstructured data as tab delimited
-birdsWCraw<- read_delim(file.path(data_path,
-                                     "0002426-251025141854904",
-                                     "occurrence.txt"),
-                   delim = "\t",
-                   show_col_types = FALSE)
+birdsWCraw <- read_delim(
+  file.path(
+    data_path,
+    "0002426-251025141854904",
+    "occurrence.txt"
+  ),
+  delim = "\t",
+  show_col_types = FALSE
+)
 
 # Explore dataframe
 glimpse(birdsWCraw)
@@ -196,62 +246,70 @@ Create a cube from downloaded occurrence data
 
 ```{r}
 # select columns required
-birdsWC<- birdsWCraw %>% select (c('year', 'month', 'order', 'family', 'genus', 'speciesKey', 'species', 'decimalLatitude', 'decimalLongitude', 'coordinateUncertaintyInMeters'))
+birdsWC <- birdsWCraw %>% select(c("year", "month", "order", "family", "genus", "speciesKey", "species", "decimalLatitude", "decimalLongitude", "coordinateUncertaintyInMeters"))
 ```
 
 ```{r}
 # calculate the pentad based on co-ordinates and create a pentad column
-# Note a function has also been written to do this, but is not implemented here
+# Note the warnings are addressed in the code
 
-birdsWC<-birdsWC %>% separate(decimalLatitude, c("degreesLat", "otherLat"), "\\.", remove = FALSE)%>%
-  mutate(otherLat = (as.numeric(paste0("0.", otherLat)))*60) %>%
-  mutate(otherLat = sprintf('%02d', plyr::round_any(otherLat, 5, floor))) %>%
-mutate(degreesLat = gsub("-","",degreesLat))  %>% 
+birdsWC <- birdsWC %>%
+  separate(decimalLatitude, c("degreesLat", "otherLat"), "\\.", remove = FALSE) %>% 
+  mutate(otherLat = replace_na(as.numeric(otherLat), 0)) %>% 
+  mutate(otherLat = (as.numeric(paste0("0.", otherLat))) * 60) %>%
+  mutate(otherLat = sprintf("%02d", plyr::round_any(otherLat, 5, floor))) %>%
+  mutate(degreesLat = gsub("-", "", degreesLat)) %>%
   unite("pentadLat", degreesLat:otherLat, remove = TRUE, sep = "")
- 
-birdsWC<-birdsWC %>% separate(decimalLongitude, c("degreesLong", "otherLong"), "\\.", remove = FALSE)%>%
-  mutate(otherLong = (as.numeric(paste0("0.", otherLong)))*60) %>%
-  mutate(otherLong = sprintf('%02d', (plyr::round_any(otherLong, 5, floor)))) %>%
-mutate(degreesLong = gsub("-","",degreesLong))  %>% 
-  unite("pentadLong", degreesLong:otherLong, remove = TRUE, sep = "")  
 
-birdsWC<-birdsWC %>% unite("pentad", c(pentadLat,pentadLong), sep = "_", remove = TRUE)
+birdsWC <- birdsWC %>%
+  separate(decimalLongitude, c("degreesLong", "otherLong"), "\\.", remove = FALSE) %>% 
+  mutate(otherLong = replace_na(as.numeric(otherLong), 0)) %>% 
+  mutate(otherLong = (as.numeric(paste0("0.", otherLong))) * 60) %>%
+  mutate(otherLong = sprintf("%02d", (plyr::round_any(otherLong, 5, floor)))) %>%
+  mutate(degreesLong = gsub("-", "", degreesLong)) %>%
+  unite("pentadLong", degreesLong:otherLong, remove = TRUE, sep = "")
+
+birdsWC <- birdsWC %>% unite("pentad", c(pentadLat, pentadLong), sep = "_", remove = FALSE)
 ```
 
 Prepare data for gcube
 
 ```{r}
 # add time point for each observation based on year
-birdsWC<- birdsWC %>% mutate (time_point = case_when(
-  year == 2015  ~ 1,
-  year == 2016  ~ 2,
-  year == 2017  ~ 3,
-  year == 2018  ~ 4,
-  year == 2019  ~ 5,
-  year == 2020  ~ 6,
-  year == 2021  ~ 7,
-  year == 2022  ~ 8,
-  year == 2023  ~ 9,
-  ))
+birdsWC <- birdsWC %>% mutate(time_point = case_when(
+  year == 2015 ~ 1,
+  year == 2016 ~ 2,
+  year == 2017 ~ 3,
+  year == 2018 ~ 4,
+  year == 2019 ~ 5,
+  year == 2020 ~ 6,
+  year == 2021 ~ 7,
+  year == 2022 ~ 8,
+  year == 2023 ~ 9,
+))
 
-Hpentads<-unique(HAASFraw$pentad) # pentads in Hessequa atlas area
+Hpentads <- unique(HAASFraw$pentad) # pentads in Hessequa atlas area
 
 # subset to only include records from Hessequa atlas area, remove NA speciesKey, Assign NA coordinateUncertaintyInMeters to '8000m'
-birdsHAA <- birdsWC %>% filter(birdsWC$pentad %in% Hpentads) %>%
-  drop_na(speciesKey) %>% replace_na(list(coordinateUncertaintyInMeters = 8000))
+birdsHAA <- birdsWC %>%
+  filter(birdsWC$pentad %in% Hpentads) %>%
+  drop_na(speciesKey) %>%
+  replace_na(list(coordinateUncertaintyInMeters = 8000))
 ```
 
 ```{r}
 # create sf object
-birdsHAAsf <- st_as_sf(x = birdsHAA,                         
-               coords = c('decimalLongitude', 'decimalLatitude'), crs = st_crs(HAASFraw))
+birdsHAAsf <- st_as_sf(
+  x = birdsHAA,
+  coords = c("decimalLongitude", "decimalLatitude"), crs = st_crs(HAASFraw)
+)
 ```
 
 ```{r}
 # reproject to a flat co-ordinate reference system
 birdsHAAsfreproj <- st_transform(birdsHAAsf, crs = "EPSG:2049") # EPSG:2049 is ideal for Hessequa Atlas Area
-  
-HAASFrawReproj<-st_transform(HAASFraw, crs = "EPSG:2049")
+
+HAASFrawReproj <- st_transform(HAASFraw, crs = "EPSG:2049")
 ```
 
 Create cube
@@ -267,20 +325,20 @@ occurrence_cube_list <- vector(mode = "list", length = length(taxa))
 for (i in seq_along(taxa)) {
   # Get species
   taxon <- taxa[i]
-  
+
   # Filter data
   taxon_data <- birdsHAAsfreproj %>%
     filter(taxon == species)
-  
+
   # Perform grid designation
   taxon_cube <- grid_designation(
     observations = taxon_data,
     grid = HAASFrawReproj, seed = 123
   )
-  
+
   # Add species column
   taxon_cube$species <- taxon
-  
+
   # Add species cube to list
   occurrence_cube_list[[i]] <- taxon_cube
 }
@@ -292,31 +350,45 @@ occurrence_cube_full <- bind_rows(occurrence_cube_list)
 structure cube in the same way as rgbif
 
 ```{r}
-MissDeats<-birdsHAAsfreproj %>%  st_drop_geometry() %>%
+MissDeats <- birdsHAAsfreproj %>%
+  st_drop_geometry() %>%
   select(order:species) %>%
   distinct()
 
 birdcubeHAAYearPentad <- occurrence_cube_full %>%
   st_drop_geometry() %>%
-  filter(n != 0) %>% mutate (year = case_when(
-  time_point == 1 ~ 2015,
-  time_point == 2  ~ 2016,
-  time_point == 3  ~ 2017,
-  time_point == 4  ~ 2018,
-  time_point == 5  ~ 2019,
-  time_point == 6 ~ 2020,
-  time_point == 7  ~ 2021,
-  time_point == 8  ~ 2022,
-  time_point == 9  ~ 2023,
-  )) %>% select(n:pentad, species:year) %>% left_join(MissDeats)%>% rename(mincoordinateuncertaintyinmeters = min_coord_uncertainty)
+  filter(n != 0) %>%
+  mutate(year = case_when(
+    time_point == 1 ~ 2015,
+    time_point == 2 ~ 2016,
+    time_point == 3 ~ 2017,
+    time_point == 4 ~ 2018,
+    time_point == 5 ~ 2019,
+    time_point == 6 ~ 2020,
+    time_point == 7 ~ 2021,
+    time_point == 8 ~ 2022,
+    time_point == 9 ~ 2023,
+  )) %>%
+  select(n:pentad, species:year) %>%
+  left_join(MissDeats) %>%
+  rename(mincoordinateuncertaintyinmeters = min_coord_uncertainty)
 
-fam<-birdcubeHAAYearPentad %>% group_by(pentad, family) %>% summarise(familycount = sum(n))
+fam <- birdcubeHAAYearPentad %>%
+  group_by(pentad, family) %>%
+  summarise(familycount = sum(n))
 
-ord<-birdcubeHAAYearPentad %>% group_by(pentad, order) %>% summarise(ordercount = sum(n))
+ord <- birdcubeHAAYearPentad %>%
+  group_by(pentad, order) %>%
+  summarise(ordercount = sum(n))
 
-gen<-birdcubeHAAYearPentad %>% group_by(pentad, genus) %>% summarise(genuscount = sum(n))
+gen <- birdcubeHAAYearPentad %>%
+  group_by(pentad, genus) %>%
+  summarise(genuscount = sum(n))
 
-birdcubeHAAYearPentad<-birdcubeHAAYearPentad %>% inner_join(fam) %>% inner_join(ord) %>% inner_join(gen)
+birdcubeHAAYearPentad <- birdcubeHAAYearPentad %>%
+  inner_join(fam) %>%
+  inner_join(ord) %>%
+  inner_join(gen)
 ```
 
 # Subset datasets 
@@ -335,26 +407,28 @@ Add a column with QDGC information
 
 ```{r}
 # subset data to include only full protocol data
-SABAP2WC<-SABAP2WCraw %>% filter(grepl("full", SABAP2WCraw$occurrenceID, fixed = TRUE))
+SABAP2WC <- SABAP2WCraw %>% filter(grepl("full", SABAP2WCraw$occurrenceID, fixed = TRUE))
 
 # subset data to only include records from Hessequa atlas area
-Hpentads<-unique(HAASFraw$pentad) # pentads in Hessequa atlas area
+Hpentads <- unique(HAASFraw$pentad) # pentads in Hessequa atlas area
 SABAP2HAA <- SABAP2WC %>% filter(SABAP2WC$verbatimLocality %in% Hpentads)
 
 # create new column called pentad
-SABAP2HAA <- SABAP2HAA  %>%
+SABAP2HAA <- SABAP2HAA %>%
   mutate(pentad = verbatimLocality)
 
 # create new column called qdgccode
-SABAP2HAA <- SABAP2HAA  %>%
-  separate(locationRemarks, into = c('Long', 'Lat', 'Code'), sep = c(2,4), remove = FALSE) %>%
-mutate(Long = paste0("S", Long))%>%
-  mutate(Lat = paste0("E0", Lat))%>%
-  unite(qdgccode, c(Lat,Long,Code), remove = TRUE, sep = "")
+SABAP2HAA <- SABAP2HAA %>%
+  separate(locationRemarks, into = c("Long", "Lat", "Code"), sep = c(2, 4), remove = FALSE) %>%
+  mutate(Long = paste0("S", Long)) %>%
+  mutate(Lat = paste0("E0", Lat)) %>%
+  unite(qdgccode, c(Lat, Long, Code), remove = TRUE, sep = "")
 
 # remove duplicate cards for the same species & remove card '3355_2045_013624_20201128'which is causing issues and is not SABAP2 dataset online
 
-SABAP2HAA<-SABAP2HAA %>% distinct(species, fieldNotes, .keep_all = TRUE) %>% filter(fieldNotes != "3355_2045_013624_20201128")
+SABAP2HAA <- SABAP2HAA %>%
+  distinct(species, fieldNotes, .keep_all = TRUE) %>%
+  filter(fieldNotes != "3355_2045_013624_20201128")
 ```
 
 ## Sampling framework data for Hessequa Atlas Area
@@ -363,83 +437,94 @@ Select data from years between 2015 and 2023
 
 Calculate number of full protocol sampling events
 
-Add a column with QDGC information. Need to use a function get_qdgcCode() to convert decimal degree co-ordinates to QDGC
+Add a column with QDGC information. Need to use a function get_qdgc_code() to convert decimal degree co-ordinates to QDGC
 
 ```{r}
 # Function to get quarter degree grid cell codes from decimal co-ordinates
 
-get_qdgcCode <- function(lat, lon) {
-  dirLon<-lon < 0 # true if longitude is negative
-  dirLat<-lat < 0 # true if latitude is negative
-  
-  DegLonCod<-ifelse(dirLon == TRUE, "W", "E") # assign east/west
-  DegLatCod<-ifelse(dirLat == TRUE, "S", "N") # assign north/south
-  
-  DegLon <- ifelse(dirLon == TRUE, -1*ceiling(lon), floor(lon)) # extract the integer from longitude (needs to be positive)
-  DegLat <- ifelse(dirLat == TRUE, -1*ceiling(lat), floor(lat)) # extract the integer from latitude (needs to be positive)
-  
-  declat<-as.numeric(paste0("0.", unlist(stringr::str_split(lat, "\\."))[2])) # extract the fractional part of latitude
-  declon<-as.numeric(paste0("0.", unlist(stringr::str_split(lon, "\\."))[2])) # extract the fractional part of longitude
-  
+get_qdgc_code <- function(lat, lon) {
+  dirLon <- lon < 0 # true if longitude is negative
+  dirLat <- lat < 0 # true if latitude is negative
+
+  DegLonCod <- ifelse(dirLon == TRUE, "W", "E") # assign east/west
+  DegLatCod <- ifelse(dirLat == TRUE, "S", "N") # assign north/south
+
+  DegLon <- ifelse(dirLon == TRUE, -1 * ceiling(lon), floor(lon)) # extract the integer from longitude (needs to be positive)
+  DegLat <- ifelse(dirLat == TRUE, -1 * ceiling(lat), floor(lat)) # extract the integer from latitude (needs to be positive)
+
+  declat <- as.numeric(paste0("0.", unlist(stringr::str_split(lat, "\\."))[2])) # extract the fractional part of latitude
+  declon <- as.numeric(paste0("0.", unlist(stringr::str_split(lon, "\\."))[2])) # extract the fractional part of longitude
+
   # Determine first code based on fractional portions
-  
-  DegCode<-ifelse(declat < 0.5 & declon < 0.5, "A", 
-         ifelse(declat < 0.5 & declon > 0.5, "B",
-         ifelse(declat > 0.5 & declon < 0.5, "C", "D")))
-  
+
+  DegCode <- ifelse(declat < 0.5 & declon < 0.5, "A",
+    ifelse(declat < 0.5 & declon > 0.5, "B",
+      ifelse(declat > 0.5 & declon < 0.5, "C", "D")
+    )
+  )
+
   # Determine second code based on fractional portions
-  
-  DegCode<-ifelse(declat < 0.5 & declon < 0.5, "A", 
-                  ifelse(declat < 0.5 & declon > 0.5, "B",
-                         ifelse(declat > 0.5 & declon < 0.5, "C", "D")))
- 
-  
-  if(DegCode == "A"){
-    QDegCode<-ifelse(declat < 0.25 & declon < 0.25, "A", 
-           ifelse(declat < 0.25 & declon > 0.25, "B",
-                  ifelse(declat > 0.25 & declon < 0.25, "C", "D")))
+
+  DegCode <- ifelse(declat < 0.5 & declon < 0.5, "A",
+    ifelse(declat < 0.5 & declon > 0.5, "B",
+      ifelse(declat > 0.5 & declon < 0.5, "C", "D")
+    )
+  )
+
+
+  if (DegCode == "A") {
+    QDegCode <- ifelse(declat < 0.25 & declon < 0.25, "A",
+      ifelse(declat < 0.25 & declon > 0.25, "B",
+        ifelse(declat > 0.25 & declon < 0.25, "C", "D")
+      )
+    )
   }
-  
- if(DegCode == "B"){
-   QDegCode<-ifelse(declat < 0.25 & declon < 0.75, "A", 
-           ifelse(declat < 0.25 & declon > 0.75, "B",
-                  ifelse(declat > 0.25 & declon < 0.75, "C", "D")))
+
+  if (DegCode == "B") {
+    QDegCode <- ifelse(declat < 0.25 & declon < 0.75, "A",
+      ifelse(declat < 0.25 & declon > 0.75, "B",
+        ifelse(declat > 0.25 & declon < 0.75, "C", "D")
+      )
+    )
   }
-  
-  if(DegCode == "C"){
-    QDegCode<-ifelse(declat < 0.75 & declon < 0.25, "A", 
-           ifelse(declat < 0.75 & declon > 0.25, "B",
-                  ifelse(declat > 0.75 & declon < 0.25, "C", "D")))
+
+  if (DegCode == "C") {
+    QDegCode <- ifelse(declat < 0.75 & declon < 0.25, "A",
+      ifelse(declat < 0.75 & declon > 0.25, "B",
+        ifelse(declat > 0.75 & declon < 0.25, "C", "D")
+      )
+    )
   }
-  
-  if(DegCode == "D"){
-    QDegCode<-ifelse(declat < 0.75 & declon < 0.75, "A", 
-           ifelse(declat < 0.75 & declon > 0.75, "B",
-                  ifelse(declat > 0.75 & declon < 0.75, "C", "D")))
+
+  if (DegCode == "D") {
+    QDegCode <- ifelse(declat < 0.75 & declon < 0.75, "A",
+      ifelse(declat < 0.75 & declon > 0.75, "B",
+        ifelse(declat > 0.75 & declon < 0.75, "C", "D")
+      )
+    )
   }
-  
+
   # Construct QDGC string
-  
-  paste0(DegLonCod, '0', DegLon, DegLatCod, DegLat, DegCode, QDegCode)
-  
-  }
+
+  paste0(DegLonCod, "0", DegLon, DegLatCod, DegLat, DegCode, QDegCode)
+}
 ```
 
 ```{r}
 # subset data to include years between 2015 and 2023
-HAASF<-HAASFraw %>% select(!(c('full proto':'2014','2024', '2025')))
+HAASF <- HAASFraw %>% select(!(c("full proto":"2014", "2024", "2025")))
 
 # calculate number of full sampling protocols per year
-HAASF<-HAASF %>%
+HAASF <- HAASF %>%
   rowwise() %>%
-  mutate(fullprotocol = sum(c_across('2015':'2023')))
+  mutate(fullprotocol = sum(c_across("2015":"2023")))
 
 # get co-ordinates of points in each pentad
 HAASFcentroids <- st_centroid(HAASF)
-HAASFcoords<-st_coordinates(HAASFcentroids)
+HAASFcoords <- st_coordinates(HAASFcentroids)
 
-# use get_qdgcCode function to get qdgc codes from co-ordinates
-HAASF$qdgccode<-apply(HAASFcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+# use get_qdgc_code function to get qdgc codes from co-ordinates
+HAASF$qdgccode <- apply(HAASFcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ## Bird occurrence cube for Western Cape at QDGC
@@ -447,9 +532,9 @@ HAASF$qdgccode<-apply(HAASFcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y
 Select data from QDGC that include Hessequa Atlas Area
 
 ```{r}
-# subset cube to only include QDGC from Hessequa atlas area 
+# subset cube to only include QDGC from Hessequa atlas area
 
-HAAQDGC<-unique(HAASF$qdgccode) # QDGC in Hessequa atlas area
+HAAQDGC <- unique(HAASF$qdgccode) # QDGC in Hessequa atlas area
 
 birdcubeHAAYearQDGC <- birdcubeWCYearQDGC %>% filter(birdcubeWCYearQDGC$qdgccode %in% HAAQDGC)
 ```
@@ -460,7 +545,7 @@ Exclude data that have mincoordinateuncertaintyinmeters > 8 km
 
 ```{r}
 # Subset data to only include records with min co-ordinate uncertainty of <= 8 km
-birdcubeHAAYearPentad <- birdcubeHAAYearPentad %>% filter(mincoordinateuncertaintyinmeters <=8000)
+birdcubeHAAYearPentad <- birdcubeHAAYearPentad %>% filter(mincoordinateuncertaintyinmeters <= 8000)
 ```
 
 # Create SABAP2 cubes with sample data
@@ -469,77 +554,94 @@ birdcubeHAAYearPentad <- birdcubeHAAYearPentad %>% filter(mincoordinateuncertain
 
 ```{r}
 # filter out na species, classify commonness, Group by species, year and qdgccode
-SABAP2HAAQDGCYear <-SABAP2HAA %>% filter(!is.na(species)) %>%
+SABAP2HAAQDGCYear <- SABAP2HAA %>%
+  filter(!is.na(species)) %>%
   group_by(species) %>%
   mutate(n_obs = n()) %>%
   ungroup() %>%
   mutate(category = cut(n_obs,
-                        breaks = c(0, 10, 100, 1000, 10000, +Inf),
-                        labels = c("Very rare", "Rare", "Common",
-                                   "Very common", "Extremely common"),
-                        right = FALSE)) %>%
-  group_by(species, family, order, genus, year , speciesKey, qdgccode, category) %>%
+    breaks = c(0, 10, 100, 1000, 10000, +Inf),
+    labels = c(
+      "Very rare", "Rare", "Common",
+      "Very common", "Extremely common"
+    ),
+    right = FALSE
+  )) %>%
+  group_by(species, family, order, genus, year, speciesKey, qdgccode, category) %>%
   summarise(n = n())
 
 # counts for genera, family, order
-fam<-SABAP2HAAQDGCYear %>% group_by(qdgccode, family) %>% summarise(familycount = sum(n))
+fam <- SABAP2HAAQDGCYear %>%
+  group_by(qdgccode, family) %>%
+  summarise(familycount = sum(n))
 
-ord<-SABAP2HAAQDGCYear %>% group_by(qdgccode, order) %>% summarise(ordercount = sum(n))
+ord <- SABAP2HAAQDGCYear %>%
+  group_by(qdgccode, order) %>%
+  summarise(ordercount = sum(n))
 
-gen<-SABAP2HAAQDGCYear %>% group_by(qdgccode, genus) %>% summarise(genuscount = sum(n))
+gen <- SABAP2HAAQDGCYear %>%
+  group_by(qdgccode, genus) %>%
+  summarise(genuscount = sum(n))
 
-SABAP2HAAQDGCYear<-SABAP2HAAQDGCYear %>% inner_join(fam) %>% inner_join(ord) %>% inner_join(gen)
+SABAP2HAAQDGCYear <- SABAP2HAAQDGCYear %>%
+  inner_join(fam) %>%
+  inner_join(ord) %>%
+  inner_join(gen)
 ```
 
 ```{r}
 # Sampling data: drop geometry and get number of samples per QDGC
-QDGCSamp<-HAASF %>% st_drop_geometry() %>% 
-group_by(qdgccode) %>%
-            summarise_at(vars('2015':'2023', 'fullprotocol'), sum)
+QDGCSamp <- HAASF %>%
+  st_drop_geometry() %>%
+  group_by(qdgccode) %>%
+  summarise_at(vars("2015":"2023", "fullprotocol"), sum)
 
 # make a long-form
-QDGCSampLong <-  QDGCSamp %>%  pivot_longer(cols = "2015":"2023", names_to = "year", values_to = "totalYear", names_transform = list(year = as.integer))
+QDGCSampLong <- QDGCSamp %>% pivot_longer(cols = "2015":"2023", names_to = "year", values_to = "totalYear", names_transform = list(year = as.integer))
 
 # join datasets
-SABAP2HAAQDGCYearSamp<-SABAP2HAAQDGCYear %>% left_join(QDGCSampLong, by = join_by(qdgccode, year)) %>% ungroup()
+SABAP2HAAQDGCYearSamp <- SABAP2HAAQDGCYear %>%
+  left_join(QDGCSampLong, by = join_by(qdgccode, year)) %>%
+  ungroup()
 
 # check that samples and no records make sense
-test<-SABAP2HAAQDGCYearSamp$n<=SABAP2HAAQDGCYearSamp$totalYear
-tmp<-which(test == FALSE)
-issues<-alldat[tmp,]
+test <- SABAP2HAAQDGCYearSamp$n <= SABAP2HAAQDGCYearSamp$totalYear
+tmp <- which(test == FALSE)
 ```
 
 ## SABAP2 QDGC for iNEXT
 
 ```{r}
 # Group by species, and QDGC, and reformat for iNEXT
-SABAP2HAAQDGCWide <-SABAP2HAA %>% 
+SABAP2HAAQDGCWide <- SABAP2HAA %>%
   group_by(species, speciesKey, qdgccode) %>%
-  summarise(n = n()) %>% 
+  summarise(n = n()) %>%
   ungroup() %>%
   pivot_wider(names_from = qdgccode, values_from = n, values_fill = 0) %>%
   select(!(species:speciesKey))
 
 # make a similar wide dataset with full protocol counts
-HAAQDGCSamp<-QDGCSamp %>% select(fullprotocol, qdgccode) %>% unique() %>%  
+HAAQDGCSamp <- QDGCSamp %>%
+  select(fullprotocol, qdgccode) %>%
+  unique() %>%
   pivot_wider(names_from = qdgccode, values_from = fullprotocol)
 
 # bind datasets together and make into list
-HAAQDGCincid<-rbind(HAAQDGCSamp, SABAP2HAAQDGCWide) %>% as.list()
+HAAQDGCincid <- rbind(HAAQDGCSamp, SABAP2HAAQDGCWide) %>% as.list()
 ```
 
 ### Calculate sample coverage for each cell
 
 ```{r}
 # run iNEXT
-HAAQDGCSC <- iNEXT(HAAQDGCincid, q=0, datatype="incidence_freq")
+HAAQDGCSC <- iNEXT(HAAQDGCincid, q = 0, datatype = "incidence_freq")
 
 # Visualise and get values for range of number of surveys
 hist(HAAQDGCSC$DataInfo$T) # histogram of number of surveys
 range(HAAQDGCSC$DataInfo$T) # range of values
 
 # Visualise and get values sample coverage
-hist(HAAQDGCSC$DataInfo$SC)# histogram of sample coverage for the grid cells
+hist(HAAQDGCSC$DataInfo$SC) # histogram of sample coverage for the grid cells
 range(HAAQDGCSC$DataInfo$SC) # range of values
 summary(HAAQDGCSC$DataInfo$SC) # summary of sample coverage
 ```
@@ -548,81 +650,99 @@ summary(HAAQDGCSC$DataInfo$SC) # summary of sample coverage
 
 ```{r}
 # filter out na species, classify commonness, Group by species, year and qdgccode
-SABAP2HAAPenYear <-SABAP2HAA %>% filter(!is.na(species)) %>%
+SABAP2HAAPenYear <- SABAP2HAA %>%
+  filter(!is.na(species)) %>%
   group_by(species) %>%
   mutate(n_obs = n()) %>%
   ungroup() %>%
   mutate(category = cut(n_obs,
-                        breaks = c(0, 10, 100, 1000, 10000, +Inf),
-                        labels = c("Very rare", "Rare", "Common",
-                                   "Very common", "Extremely common"),
-                        right = FALSE)) %>%
+    breaks = c(0, 10, 100, 1000, 10000, +Inf),
+    labels = c(
+      "Very rare", "Rare", "Common",
+      "Very common", "Extremely common"
+    ),
+    right = FALSE
+  )) %>%
   group_by(species, family, order, genus, year, speciesKey, pentad, category) %>%
   summarise(n = n())
 
 # counts for genera, family, order
-fam<-SABAP2HAAPenYear %>% group_by(pentad, family) %>% summarise(familycount = sum(n))
+fam <- SABAP2HAAPenYear %>%
+  group_by(pentad, family) %>%
+  summarise(familycount = sum(n))
 
-ord<-SABAP2HAAPenYear %>% group_by(pentad, order) %>% summarise(ordercount = sum(n))
+ord <- SABAP2HAAPenYear %>%
+  group_by(pentad, order) %>%
+  summarise(ordercount = sum(n))
 
-gen<-SABAP2HAAPenYear %>% group_by(pentad, genus) %>% summarise(genuscount = sum(n))
+gen <- SABAP2HAAPenYear %>%
+  group_by(pentad, genus) %>%
+  summarise(genuscount = sum(n))
 
-SABAP2HAAPenYear<-SABAP2HAAPenYear %>% inner_join(fam) %>% inner_join(ord) %>% inner_join(gen)
+SABAP2HAAPenYear <- SABAP2HAAPenYear %>%
+  inner_join(fam) %>%
+  inner_join(ord) %>%
+  inner_join(gen)
 ```
 
 ```{r}
 # Sampling data: drop geometry and get number of samples per pentad
-PenSamp<-HAASF %>% st_drop_geometry() %>% 
-group_by(pentad) %>%
-            summarise_at(vars('2015':'2023', 'fullprotocol'), sum)
+PenSamp <- HAASF %>%
+  st_drop_geometry() %>%
+  group_by(pentad) %>%
+  summarise_at(vars("2015":"2023", "fullprotocol"), sum)
 
 # make a long-form
-PenSampLong <-  PenSamp %>%  pivot_longer(cols = "2015":"2023", names_to = "year", values_to = "totalYear", names_transform = list(year = as.integer))
+PenSampLong <- PenSamp %>% pivot_longer(cols = "2015":"2023", names_to = "year", values_to = "totalYear", names_transform = list(year = as.integer))
 
 # join datasets
-SABAP2HAAPenYearSamp<-SABAP2HAAPenYear %>% left_join(PenSampLong, by = join_by(pentad, year))  %>% ungroup()
+SABAP2HAAPenYearSamp <- SABAP2HAAPenYear %>%
+  left_join(PenSampLong, by = join_by(pentad, year)) %>%
+  ungroup()
 
 # check that samples and no records make sense
-test<-SABAP2HAAPenYearSamp$n<=SABAP2HAAPenYearSamp$totalYear
-tmp<-which(test == FALSE)
+test <- SABAP2HAAPenYearSamp$n <= SABAP2HAAPenYearSamp$totalYear
+tmp <- which(test == FALSE)
 ```
 
 ## SABAP2 pentads for iNEXT
 
 ```{r}
 # Group by species, and pentad, and reformat for iNEXT
-SABAP2HAAPenWide <-SABAP2HAA %>% 
+SABAP2HAAPenWide <- SABAP2HAA %>%
   group_by(species, speciesKey, pentad) %>%
-  summarise(n = n()) %>% 
+  summarise(n = n()) %>%
   ungroup() %>%
   pivot_wider(names_from = pentad, values_from = n, values_fill = 0) %>%
   select(!(species:speciesKey))
 
 # make a similar wide dataset with full protocol counts
-HAAPenSamp<-PenSamp %>% select(fullprotocol, pentad) %>% unique() %>%  
+HAAPenSamp <- PenSamp %>%
+  select(fullprotocol, pentad) %>%
+  unique() %>%
   pivot_wider(names_from = pentad, values_from = fullprotocol)
 
 # remove cells not in surveys
-HAAPenSamp<- HAAPenSamp %>%  select(matches(names(SABAP2HAAPenWide)))
+HAAPenSamp <- HAAPenSamp %>% select(matches(names(SABAP2HAAPenWide)))
 
 # bind datasets together and make into list
-HAAPenincid<-rbind(HAAPenSamp, SABAP2HAAPenWide) %>% as.list()
+HAAPenincid <- rbind(HAAPenSamp, SABAP2HAAPenWide) %>% as.list()
 ```
 
 ### Calculate sample coverage for each cell
 
 ```{r}
 # run iNEXT
-HAAPenSC <- iNEXT(HAAPenincid, q=0, datatype="incidence_freq")
+HAAPenSC <- iNEXT(HAAPenincid, q = 0, datatype = "incidence_freq")
 
 # Visualise and get values for range of number of surveys
 hist(HAAPenSC$DataInfo$T) # histogram of number of surveys
 range(HAAPenSC$DataInfo$T) # range of values
 
 # Visualise and get values sample coverage
-hist(HAAPenSC$DataInfo$SC)# histogram of sample coverage for the grid cells
+hist(HAAPenSC$DataInfo$SC) # histogram of sample coverage for the grid cells
 range(HAAPenSC$DataInfo$SC) # range of values
-summary(HAAQDGCSC$DataInfo$SC) # summary of sample coverag
+summary(HAAPenSC$DataInfo$SC) # summary of sample coverag
 ```
 
 # Write data to file
@@ -660,21 +780,33 @@ write.csv(birdcubeHAAYearPentad, file.path(out_path, "Unstruc_Pentad_HAA_data.cs
 Quarter degree grid cells
 
 ```{r}
-SABAP2HAAQDGCYearSamp %>% select(year, qdgccode, totalYear) %>% unique() %>%  group_by(year) %>% summarise(n = sum(totalYear)) %>%
+SABAP2HAAQDGCYearSamp %>%
+  select(year, qdgccode, totalYear) %>%
+  unique() %>%
+  group_by(year) %>%
+  summarise(n = sum(totalYear)) %>%
   ggplot(aes(x = year, y = n)) +
   geom_col(fill = "#1B9E77", color = "black") +
-  labs(x = "Year",
-       y = "Number of surveys")
+  labs(
+    x = "Year",
+    y = "Number of surveys"
+  )
 ```
 
 Pentads
 
 ```{r}
-SABAP2HAAPenYearSamp %>% select(year, pentad, totalYear) %>% unique() %>%  group_by(year) %>% summarise(n = sum(totalYear)) %>%
+SABAP2HAAPenYearSamp %>%
+  select(year, pentad, totalYear) %>%
+  unique() %>%
+  group_by(year) %>%
+  summarise(n = sum(totalYear)) %>%
   ggplot(aes(x = year, y = n)) +
   geom_col(fill = "#1B9E77", color = "black") +
-  labs(x = "Year",
-       y = "Number of surveys")
+  labs(
+    x = "Year",
+    y = "Number of surveys"
+  )
 ```
 
 ### Number of observations per year
@@ -682,23 +814,29 @@ SABAP2HAAPenYearSamp %>% select(year, pentad, totalYear) %>% unique() %>%  group
 Quarter degree grid cells
 
 ```{r}
-SABAP2HAAQDGCYearSamp %>% group_by(year) %>%
-    summarise(n = sum(n)) %>%
+SABAP2HAAQDGCYearSamp %>%
+  group_by(year) %>%
+  summarise(n = sum(n)) %>%
   ggplot(aes(x = year, y = n)) +
   geom_col(fill = "#1B9E77", color = "black") +
-  labs(x = "Year",
-       y = "Number of observations")
+  labs(
+    x = "Year",
+    y = "Number of observations"
+  )
 ```
 
 Pentads
 
 ```{r}
-SABAP2HAAPenYearSamp %>% group_by(year) %>%
-    summarise(n = sum(n)) %>%
+SABAP2HAAPenYearSamp %>%
+  group_by(year) %>%
+  summarise(n = sum(n)) %>%
   ggplot(aes(x = year, y = n)) +
   geom_col(fill = "#1B9E77", color = "black") +
-  labs(x = "Year",
-       y = "Number of observations")
+  labs(
+    x = "Year",
+    y = "Number of observations"
+  )
 ```
 
 ### Number of surveys per grid cell
@@ -706,25 +844,33 @@ SABAP2HAAPenYearSamp %>% group_by(year) %>%
 Quarter degree grid cells
 
 ```{r}
-SABAP2HAAQDGCYearSamp %>% select(qdgccode, fullprotocol) %>%unique() %>%
+SABAP2HAAQDGCYearSamp %>%
+  select(qdgccode, fullprotocol) %>%
+  unique() %>%
   group_by(qdgccode) %>%
-    summarise(n = sum(fullprotocol)) %>%
+  summarise(n = sum(fullprotocol)) %>%
   ggplot(aes(x = n)) +
   geom_histogram(fill = "#D95F02", color = "black") +
-  labs(x = "Number of surveys",
-       y = "Number of quarter-degree grid cells")
+  labs(
+    x = "Number of surveys",
+    y = "Number of quarter-degree grid cells"
+  )
 ```
 
 Pentads
 
 ```{r}
-SABAP2HAAPenYearSamp %>% select(pentad, fullprotocol) %>%unique() %>%
+SABAP2HAAPenYearSamp %>%
+  select(pentad, fullprotocol) %>%
+  unique() %>%
   group_by(pentad) %>%
-    summarise(n = sum(fullprotocol)) %>%
+  summarise(n = sum(fullprotocol)) %>%
   ggplot(aes(x = n)) +
   geom_histogram(fill = "#D95F02", color = "black") +
-  labs(x = "Number of surveys",
-       y = "Number of pentad grid cells")
+  labs(
+    x = "Number of surveys",
+    y = "Number of pentad grid cells"
+  )
 ```
 
 ## Unstructured data
@@ -734,23 +880,29 @@ SABAP2HAAPenYearSamp %>% select(pentad, fullprotocol) %>%unique() %>%
 Quarter degree grid cells
 
 ```{r}
-birdcubeHAAYearQDGC %>% group_by(year) %>%
-    summarise(n = sum(n)) %>%
+birdcubeHAAYearQDGC %>%
+  group_by(year) %>%
+  summarise(n = sum(n)) %>%
   ggplot(aes(x = year, y = n)) +
   geom_col(fill = "#1B9E77", color = "black") +
-  labs(x = "Year",
-       y = "Number of observations")
+  labs(
+    x = "Year",
+    y = "Number of observations"
+  )
 ```
 
 Pentads
 
 ```{r}
-birdcubeHAAYearPentad %>% group_by(year) %>%
-    summarise(n = sum(n)) %>%
+birdcubeHAAYearPentad %>%
+  group_by(year) %>%
+  summarise(n = sum(n)) %>%
   ggplot(aes(x = year, y = n)) +
   geom_col(fill = "#1B9E77", color = "black") +
-  labs(x = "Year",
-       y = "Number of observations")
+  labs(
+    x = "Year",
+    y = "Number of observations"
+  )
 ```
 
 # Calculation of metrics and comparison
@@ -759,12 +911,18 @@ birdcubeHAAYearPentad %>% group_by(year) %>%
 # Create a custom color scale
 library(RColorBrewer)
 myColors <- brewer.pal(5, "Dark2")
-names(myColors) <- c("Very rare", "Rare", "Common",
-                     "Very common", "Extremely common")
-colScale <- scale_color_manual(name = "Category",
-                                values = myColors)
-fillScale <- scale_fill_manual(name = "Category",
-                                values = myColors)
+names(myColors) <- c(
+  "Very rare", "Rare", "Common",
+  "Very common", "Extremely common"
+)
+colScale <- scale_color_manual(
+  name = "Category",
+  values = myColors
+)
+fillScale <- scale_fill_manual(
+  name = "Category",
+  values = myColors
+)
 ```
 
 ## Range
@@ -782,39 +940,44 @@ studied_spec <- unique(SABAP2HAAQDGCYearSamp$species) %>%
 range_comp <- function(sel_species, period = 2015:2023,
                        dataset1 = SABAP2HAAQDGCYearSamp,
                        dataset2 = birdcubeHAAYearQDGC) {
-
   # We filter both datasets for the species and period of interest
   # and group them by QDGC
   set_sabap2 <- dataset1 %>%
-      filter(.data$species %in% sel_species,
-           .data$year %in% period) %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
     group_by(.data$qdgccode) %>%
     summarise(n = n()) # no observations rather than no individuals
 
   set_cube <- dataset2 %>%
-    filter(.data$species %in% sel_species,
-           .data$year %in% period) %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
     group_by(.data$qdgccode) %>%
     summarise(n = sum(.data$n))
 
   total_sabap2 <- length(set_sabap2$qdgccode)
   perc_sabap2 <- (total_sabap2 / 15) * 100 # have taken the value to be total number of grid cells in area of interest
-  
+
   total_cube <- length(set_cube$qdgccode)
   perc_cube <- (total_cube / 15) * 100 # have taken the value to be total number of grid cells in area of interest
 
   overlap_all_sabap2_cube <- length(
     which(set_cube$qdgccode %in% unique(dataset1$qdgccode))
-    )
+  )
   perc_overlap_all <- (overlap_all_sabap2_cube / 15) * 100 # have taken the value to be total number of grid cells in the sabap2 data
 
   total_overlap <- length(which(set_cube$qdgccode %in% set_sabap2$qdgccode))
-  perc <- (total_overlap / total_sabap2) * 100 
+  perc <- (total_overlap / total_sabap2) * 100
 
-  list(total_sabap2, perc_sabap2,
-       total_cube, perc_cube,
-       overlap_all_sabap2_cube, perc_overlap_all,
-       total_overlap, perc)
+  list(
+    total_sabap2, perc_sabap2,
+    total_cube, perc_cube,
+    overlap_all_sabap2_cube, perc_overlap_all,
+    total_overlap, perc
+  )
 }
 ```
 
@@ -830,9 +993,9 @@ comp_range_data$perc_birdcube_total_sabap2 <- NA
 comp_range_data$overlap_birdcube_spec_sabap2 <- NA
 comp_range_data$percentage_birdcube_spec_sabap2 <- NA
 
-for (i in studied_spec){
+for (i in studied_spec) {
   test <- range_comp(i, period = 2015:2023)
-  
+
   comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
   comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
   comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
@@ -857,12 +1020,15 @@ Range overlap
 # plot percentage range overlap
 comp_range_data %>%
   inner_join(SABAP2HAAQDGCYearSamp %>% distinct(species, category),
-            by = join_by(studied_spec == species)) %>%
-  ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
+    by = join_by(studied_spec == species)
+  ) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2, fill = category)) +
   geom_histogram() +
   fillScale +
-  labs(x = "Percentage range overlap",
-       y = "Number of species")
+  labs(
+    x = "Percentage range overlap",
+    y = "Number of species"
+  )
 ```
 
 Range size
@@ -871,16 +1037,21 @@ Range size
 # Plot number of grid cells in which species recorded in SABAP2 vs number of cells in which recorded in unstructured data
 comp_range_data %>%
   inner_join(SABAP2HAAQDGCYearSamp %>% distinct(species, category),
-            by = join_by(studied_spec == species)) %>%
+    by = join_by(studied_spec == species)
+  ) %>%
   ggplot(aes(x = sabap2_squares, y = cube_squares, color = category)) +
   geom_point() +
   colScale +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson")+
-  labs(x = "Number of squares occupied\nby species in SABAP2 dataset",
-       y = "Number of squares occupied\nby species in cube dataset")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of squares occupied\nby species in SABAP2 dataset",
+    y = "Number of squares occupied\nby species in cube dataset"
+  )
 ```
 
 ## Pentad
@@ -896,39 +1067,44 @@ studied_spec <- unique(SABAP2HAAPenYearSamp$species) %>%
 range_comp <- function(sel_species, period = 2015:2023,
                        dataset1 = SABAP2HAAPenYearSamp,
                        dataset2 = birdcubeHAAYearPentad) {
-
   # We filter both datasets for the species and period of interest
   # and group them by pentad
   set_sabap2 <- dataset1 %>%
-      filter(.data$species %in% sel_species,
-           .data$year %in% period) %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
     group_by(.data$pentad) %>%
     summarise(n = n()) # no observations rather than no individuals
 
   set_cube <- dataset2 %>%
-    filter(.data$species %in% sel_species,
-           .data$year %in% period) %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
     group_by(.data$pentad) %>%
     summarise(n = sum(.data$n))
 
   total_sabap2 <- length(set_sabap2$pentad)
   perc_sabap2 <- (total_sabap2 / 77) * 100 # have taken the value to be total number of grid cells in area of interest
-  
+
   total_cube <- length(set_cube$pentad)
   perc_cube <- (total_cube / 77) * 100 # have taken the value to be total number of grid cells in area of interest
 
   overlap_all_sabap2_cube <- length(
     which(set_cube$pentad %in% unique(dataset1$pentad))
-    )
+  )
   perc_overlap_all <- (overlap_all_sabap2_cube / 77) * 100 # have taken the value to be total number of grid cells in the sabap2 data
 
   total_overlap <- length(which(set_cube$pentad %in% set_sabap2$pentad))
-  perc <- (total_overlap / total_sabap2) * 100 
+  perc <- (total_overlap / total_sabap2) * 100
 
-  list(total_sabap2, perc_sabap2,
-       total_cube, perc_cube,
-       overlap_all_sabap2_cube, perc_overlap_all,
-       total_overlap, perc)
+  list(
+    total_sabap2, perc_sabap2,
+    total_cube, perc_cube,
+    overlap_all_sabap2_cube, perc_overlap_all,
+    total_overlap, perc
+  )
 }
 ```
 
@@ -944,9 +1120,9 @@ comp_range_data$perc_birdcube_total_sabap2 <- NA
 comp_range_data$overlap_birdcube_spec_sabap2 <- NA
 comp_range_data$percentage_birdcube_spec_sabap2 <- NA
 
-for (i in studied_spec){
+for (i in studied_spec) {
   test <- range_comp(i, period = 2015:2023)
-  
+
   comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
   comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
   comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
@@ -963,7 +1139,7 @@ for (i in studied_spec){
 summary(comp_range_data)
 ```
 
-Overall we see a range overlap of 24%
+Overall we see a range overlap of 22%
 
 Range overlap
 
@@ -971,12 +1147,15 @@ Range overlap
 # plot percentage range overlap
 comp_range_data %>%
   inner_join(SABAP2HAAPenYearSamp %>% distinct(species, category),
-            by = join_by(studied_spec == species)) %>%
-  ggplot(aes(x = percentage_birdcube_spec_sabap2,fill = category)) +
+    by = join_by(studied_spec == species)
+  ) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2, fill = category)) +
   geom_histogram() +
   fillScale +
-  labs(x = "Percentage range overlap",
-       y = "Number of species")
+  labs(
+    x = "Percentage range overlap",
+    y = "Number of species"
+  )
 ```
 
 Range size
@@ -985,16 +1164,21 @@ Range size
 # Plot number of grid cells in which species recorded in SABAP2 vs number of cells in which recorded in unstructured data
 comp_range_data %>%
   inner_join(SABAP2HAAPenYearSamp %>% distinct(species, category),
-            by = join_by(studied_spec == species)) %>%
+    by = join_by(studied_spec == species)
+  ) %>%
   ggplot(aes(x = sabap2_squares, y = cube_squares, color = category)) +
   geom_point() +
   colScale +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson")+
-  labs(x = "Number of squares occupied\nby species in SABAP2 dataset",
-       y = "Number of squares occupied\nby species in cube dataset")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of squares occupied\nby species in SABAP2 dataset",
+    y = "Number of squares occupied\nby species in cube dataset"
+  )
 ```
 
 ## b3gbi indicators
@@ -1004,27 +1188,31 @@ comp_range_data %>%
 Unstructured data at QDGC
 
 ```{r}
-HAAunstrucQDGCproc <- process_cube(birdcubeHAAYearQDGC, grid_type = 'eqdgc', first_year = 2015, cols_year =  'year', cols_cellCode = 'qdgccode', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters	
-= 'mincoordinateuncertaintyinmeters', cols_familyCount = 'familycount', cols_speciesKey = 'specieskey')
+HAAunstrucQDGCproc <- process_cube(birdcubeHAAYearQDGC,
+  grid_type = "eqdgc", first_year = 2015, cols_year = "year", cols_cellCode = "qdgccode", cols_occurrences = "n",
+  cols_minCoordinateUncertaintyInMeters = "mincoordinateuncertaintyinmeters", cols_familyCount = "familycount", cols_speciesKey = "specieskey"
+)
 ```
 
 Structured data at QDGC
 
 ```{r}
-HAAStrucQDGCproc <- process_cube(SABAP2HAAQDGCYearSamp, grid_type = 'eqdgc', first_year = 2015, cols_year =  'year', cols_cellCode = 'qdgccode', cols_occurrences = 'n', cols_speciesKey = 'speciesKey', cols_familyCount = 'familycount')
+HAAStrucQDGCproc <- process_cube(SABAP2HAAQDGCYearSamp, grid_type = "eqdgc", first_year = 2015, cols_year = "year", cols_cellCode = "qdgccode", cols_occurrences = "n", cols_speciesKey = "speciesKey", cols_familyCount = "familycount")
 ```
 
 Unstructured data for pentads
 
 ```{r}
-HAAunstrucPenproc <- process_cube(birdcubeHAAYearPentad, grid_type = 'custom', first_year = 2015, cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n',  cols_minCoordinateUncertaintyInMeters 
-= 'mincoordinateuncertaintyinmeters', cols_familyCount = 'familycount', cols_speciesKey = 'speciesKey')
+HAAunstrucPenproc <- process_cube(birdcubeHAAYearPentad,
+  grid_type = "custom", first_year = 2015, cols_year = "year", cols_cellCode = "pentad", cols_occurrences = "n",
+  cols_minCoordinateUncertaintyInMeters = "mincoordinateuncertaintyinmeters", cols_familyCount = "familycount", cols_speciesKey = "speciesKey"
+)
 ```
 
 Structured data for pentads
 
 ```{r}
-HAAstrucPenproc <- process_cube(SABAP2HAAPenYearSamp, grid_type = 'custom', first_year = 2015, cols_year =  'year', cols_cellCode = 'pentad', cols_occurrences = 'n',  cols_familyCount = 'familycount', cols_speciesKey = 'speciesKey')
+HAAstrucPenproc <- process_cube(SABAP2HAAPenYearSamp, grid_type = "custom", first_year = 2015, cols_year = "year", cols_cellCode = "pentad", cols_occurrences = "n", cols_familyCount = "familycount", cols_speciesKey = "speciesKey")
 ```
 
 ### Total occurrences
@@ -1047,44 +1235,62 @@ Compare
 
 ```{r}
 # Plot number of records structured vs unstructured data
-map_obs_HAA_QDGCS$data %>% st_drop_geometry() %>% 
-   inner_join(map_obs_HAA_QDGCU$data,
-            by = join_by(cellid)) %>%
+map_obs_HAA_QDGCS$data %>%
+  st_drop_geometry() %>%
+  inner_join(map_obs_HAA_QDGCU$data,
+    by = join_by(cellid)
+  ) %>%
   ggplot(aes(x = diversity_val.x, y = diversity_val.y)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Number of records - structured data",
-       y = "Number of records - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of records - structured data",
+    y = "Number of records - unstructured data"
+  )
 ```
 
 Unstructured data pentads - note not possible through b3gbi
 
 ```{r}
-obs_HAA_PenU<-birdcubeHAAYearPentad %>% group_by(pentad) %>% summarise(Obs = sum(n))
+obs_HAA_PenU <- birdcubeHAAYearPentad %>%
+  group_by(pentad) %>%
+  summarise(Obs = sum(n))
 ```
 
 Structured data pentads - note not possible through b3gbi
 
 ```{r}
-obs_HAA_PenS<-SABAP2HAAPenYearSamp %>% group_by(pentad, fullprotocol) %>% summarise(Obs = sum(n)) %>% mutate(Obseff = Obs/fullprotocol)
+obs_HAA_PenS <- SABAP2HAAPenYearSamp %>%
+  group_by(pentad, fullprotocol) %>%
+  summarise(Obs = sum(n)) %>%
+  mutate(Obseff = Obs / fullprotocol)
 ```
 
 Compare
 
 ```{r}
 # Plot number of records structured vs unstructured data
-obs_HAA_PenS %>% 
-   inner_join(obs_HAA_PenU,
-            by = join_by(pentad)) %>%
+obs_HAA_PenS %>%
+  inner_join(obs_HAA_PenU,
+    by = join_by(pentad)
+  ) %>%
   ggplot(aes(x = Obs.x, y = Obs.y)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Number of records - structured data",
-       y = "Number of records - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of records - structured data",
+    y = "Number of records - unstructured data"
+  )
 ```
 
 
@@ -1093,7 +1299,10 @@ obs_HAA_PenS %>%
 QDGC
 
 ```{r}
-obs_HAA_QDGCSeff<-SABAP2HAAQDGCYearSamp %>% group_by(qdgccode, fullprotocol) %>% summarise(Obs = sum(n)) %>% mutate(Obseff = Obs/fullprotocol)
+obs_HAA_QDGCSeff <- SABAP2HAAQDGCYearSamp %>%
+  group_by(qdgccode, fullprotocol) %>%
+  summarise(Obs = sum(n)) %>%
+  mutate(Obseff = Obs / fullprotocol)
 ```
 
 Compare - QDGC
@@ -1101,39 +1310,51 @@ Compare - QDGC
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(map_obs_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-map_obs_HAA_QDGCU$data$qdgccode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+map_obs_HAA_QDGCU$data$qdgccode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot number of records structured corrected for survey effort vs unstructured data
-obs_HAA_QDGCSeff %>% 
-   inner_join(map_obs_HAA_QDGCU$data,
-            by = join_by(qdgccode)) %>%
+obs_HAA_QDGCSeff %>%
+  inner_join(map_obs_HAA_QDGCU$data,
+    by = join_by(qdgccode)
+  ) %>%
   ggplot(aes(x = Obseff, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Number of records/number of surveys - structured data",
-       y = "Number of records - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of records/number of surveys - structured data",
+    y = "Number of records - unstructured data"
+  )
 ```
 
 Pentad
 
 ```{r}
 # Plot number of records structured vs unstructured data
-obs_HAA_PenS %>% 
-   inner_join(obs_HAA_PenU,
-            by = join_by(pentad)) %>%
+obs_HAA_PenS %>%
+  inner_join(obs_HAA_PenU,
+    by = join_by(pentad)
+  ) %>%
   ggplot(aes(x = Obseff, y = Obs.y)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Number of records/number of surveys - structured data",
-       y = "Number of records - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of records/number of surveys - structured data",
+    y = "Number of records - unstructured data"
+  )
 ```
 
 ### Observed richness
@@ -1156,46 +1377,61 @@ Compare
 
 ```{r}
 # Plot number observed richness structured vs unstructured data
-map_obs_rich_HAA_QDGCS$data %>% st_drop_geometry() %>% 
-   inner_join(map_obs_rich_HAA_QDGCU$data,
-            by = join_by(cellid)) %>%
+map_obs_rich_HAA_QDGCS$data %>%
+  st_drop_geometry() %>%
+  inner_join(map_obs_rich_HAA_QDGCU$data,
+    by = join_by(cellid)
+  ) %>%
   ggplot(aes(x = diversity_val.x, y = diversity_val.y)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Observed richness - structured data",
-       y = "Observed richness - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Observed richness - structured data",
+    y = "Observed richness - unstructured data"
+  )
 ```
 
 Unstructured data pentads (note not possible through b3gbi as a bespoke grid)
 
 ```{r}
-obs_rich_HAA_PenU <- HAAunstrucPenproc$data %>% group_by(cellCode) %>%
-              summarise(n_species = n_distinct(scientificName), .groups = "drop")
+obs_rich_HAA_PenU <- HAAunstrucPenproc$data %>%
+  group_by(cellCode) %>%
+  summarise(n_species = n_distinct(scientificName), .groups = "drop")
 ```
 
 Structured data pentads (note not possible through b3gbi as a bespoke grid)
 
 ```{r}
-obs_rich_HAA_PenS <- HAAstrucPenproc$data %>% group_by(cellCode) %>%
-              summarise(n_species = n_distinct(scientificName), .groups = "drop")
+obs_rich_HAA_PenS <- HAAstrucPenproc$data %>%
+  group_by(cellCode) %>%
+  summarise(n_species = n_distinct(scientificName), .groups = "drop")
 ```
 
 Compare
 
 ```{r}
 # Plot number observed richness structured vs unstructured data
-obs_rich_HAA_PenS %>%  
-   inner_join(obs_rich_HAA_PenU,
-            by = join_by(cellCode)) %>%
+obs_rich_HAA_PenS %>%
+  inner_join(obs_rich_HAA_PenU,
+    by = join_by(cellCode)
+  ) %>%
   ggplot(aes(x = n_species.x, y = n_species.y)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Observed richness - structured data",
-       y = "Observed richness - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Observed richness - structured data",
+    y = "Observed richness - unstructured data"
+  )
 ```
 
 
@@ -1205,7 +1441,7 @@ Unstructured QDGC - b3gbi with default settings
 
 ```{r}
 # with default settings (coverage 0.95)
-hill0_map_HAA_QDGCU <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("incidence")) 
+hill0_map_HAA_QDGCU <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("incidence"))
 plot(hill0_map_HAA_QDGCU, title = "Estimated Bird Species Richness - unstructured data (0.95 coverage)")
 ```
 
@@ -1213,7 +1449,7 @@ Structured QDGC - b3gbi with default settings & assume_freq  = FALSE
 
 ```{r}
 # with default settings (coverage 0.95) and assume_freq = FALSE
-hill0_map_HAA_QDGCS <- hill0_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("incidence")) 
+hill0_map_HAA_QDGCS <- hill0_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("incidence"))
 plot(hill0_map_HAA_QDGCS, title = "Estimated Bird Species Richness - structured data (0.95 coverage)")
 ```
 
@@ -1230,12 +1466,14 @@ plot(hill0_map_HAA_QDGCSas, title = "Estimated Bird Species Richness - structure
 Structured QDGC - calculated with iNEXT (i.e., actual survey effort used)
 
 ```{r}
-inEXTestsHAAQDGCS<-estimateD(HAAQDGCincid, datatype="incidence_freq",
-          base="coverage", level=NULL, conf=0.95) # If base="coverage" and level=NULL, then this function computes the diversity estimates for the minimum among the coverage values for samples extrapolated to double the size of the reference sample.
+inEXTestsHAAQDGCS <- estimateD(HAAQDGCincid,
+  datatype = "incidence_freq",
+  base = "coverage", level = NULL, conf = 0.95
+) # If base="coverage" and level=NULL, then this function computes the diversity estimates for the minimum among the coverage values for samples extrapolated to double the size of the reference sample.
 
 # note the level implemented is 0.995...
 
-richEstsHAAQDGCS<-inEXTestsHAAQDGCS %>% filter(Order.q == 0)
+richEstsHAAQDGCS <- inEXTestsHAAQDGCS %>% filter(Order.q == 0)
 ```
 
 Compare estimates
@@ -1243,108 +1481,133 @@ Compare estimates
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(map_obs_rich_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-map_obs_rich_HAA_QDGCU$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+map_obs_rich_HAA_QDGCU$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill0_map_HAA_QDGCU$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCU$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill0_map_HAA_QDGCS$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCS$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill0_map_HAA_QDGCSas$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCSas$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot observed richness from unstructured data and estimated richness from iNEXT from structured data
-richEstsHAAQDGCS %>% 
-   inner_join(map_obs_rich_HAA_QDGCU$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(map_obs_rich_HAA_QDGCU$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.995)",
-       y = "Observed richness - unstructured data (b3gbi)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.995)",
+    y = "Observed richness - unstructured data (b3gbi)"
+  )
 ```
 
 ```{r}
 # Plot estimated richness for structured data (b3gbi - coverage 0.95) and estimated richness from iNEXT (0.995) for structured data (note assume_freq = FALSE in b3gbi)
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCS$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCS$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.995)",
-       y = "Estimated richness - structured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.995)",
+    y = "Estimated richness - structured data (b3gbi - 0.95)"
+  )
 ```
 
 ```{r}
 # Plot estimated richness for structured data (b3gbi - coverage 0.95) and estimated richness from iNEXT (0.995) for structured data (note assume_freq = TRUE in b3gbi)
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCSas$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCSas$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.995)",
-       y = "Estimated richness - structured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.995)",
+    y = "Estimated richness - structured data (b3gbi - 0.95)"
+  )
 ```
 
 
 ```{r}
 # Plot estimated richness for unstructured data (b3gbi - coverage 0.95) and estimated richness from iNEXT for structured data
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCU$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCU$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.995)",
-       y = "Estimated richness - unstructured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.995)",
+    y = "Estimated richness - unstructured data (b3gbi - 0.95)"
+  )
 ```
 
 Calculate estimates for unstructured data at different coverage thresholds and compare
 
 ```{r}
 # Get qdgc codes
-Codes<- map_obs_rich_HAA_QDGCU$data %>% select(QDGCcode) %>% st_drop_geometry()
+Codes <- map_obs_rich_HAA_QDGCU$data %>%
+  select(QDGCcode) %>%
+  st_drop_geometry()
 
 # identify coverage levels for estimates
-cov<-seq(0.05, 0.95, by = 0.1)
+cov <- seq(0.05, 0.95, by = 0.1)
 
 # loop to estimate richness for unstructured data using b3gbi at various coverage levels
-UnstrucEsts<-Codes
-for (i in cov){
-  hill0 <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium",  coverage = i, data_type = "incidence") 
+UnstrucEsts <- Codes
+for (i in cov) {
+  hill0 <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = i, data_type = "incidence")
   hill0 <- hill0$data %>% st_drop_geometry()
-  UnstrucEsts<-cbind(UnstrucEsts, hill0[,'diversity_val'])
-  names(UnstrucEsts)[ncol(UnstrucEsts)]<-i
+  UnstrucEsts <- cbind(UnstrucEsts, hill0[, "diversity_val"])
+  names(UnstrucEsts)[ncol(UnstrucEsts)] <- i
 }
 
-# Estimate richness for structured data using iNEXT 
-StrucEsts<-Codes
-iNEXTests<-richEstsHAAQDGCS %>% filter(Order.q == 0) %>% select(Assemblage, qD)
-StrucEsts<-StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
+# Estimate richness for structured data using iNEXT
+StrucEsts <- Codes
+iNEXTests <- richEstsHAAQDGCS %>%
+  filter(Order.q == 0) %>%
+  select(Assemblage, qD)
+StrucEsts <- StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
 
-StrucEsts<-na.omit(StrucEsts) # remove rows with na
-UnstrucEsts<-na.omit(UnstrucEsts) # remove rows with na
+StrucEsts <- na.omit(StrucEsts) # remove rows with na
+UnstrucEsts <- na.omit(UnstrucEsts) # remove rows with na
 
 # correlation matrix
-EstCor<-cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
-
-# plot correlation
-corrplot(EstCor, method="circle")
+EstCor <- cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
 
 # largest correlation
-ind<-which(EstCor==max(EstCor),arr.ind = TRUE)
+ind <- which(EstCor == max(EstCor), arr.ind = TRUE)
 rownames(EstCor)[ind[, 1]]
 ```
 
@@ -1352,55 +1615,69 @@ Re-run and plot the best options
 
 ```{r}
 # Estimates from b3gbi (coverage 0.15) for unstructured data
-hill0_map_HAA_QDGCU15 <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.15, data_type = "incidence") 
+hill0_map_HAA_QDGCU15 <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.15, data_type = "incidence")
 plot(hill0_map_HAA_QDGCU15, title = "Estimated Bird Species Richness - unstructured data (0.15 coverage)")
 ```
 
 Compare estimates
 
 ```{r}
-hill0_map_HAA_QDGCU15$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCU15$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot estimated richness for unstructured data (b3gbi - coverage 0.15) and estimated richness from iNEXT (0.995) from structured data
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCU15$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCU15$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.995)",
-       y = "Estimated richness - unstructured data (b3gbi - 0.15)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.995)",
+    y = "Estimated richness - unstructured data (b3gbi - 0.15)"
+  )
 ```
 
 Structured data for pentads - calculated with iNEXT (i.e., actual survey effort used)
 
 ```{r}
-inEXTestsHAAPenS<-estimateD(HAAPenincid, datatype="incidence_freq",
-          base="coverage", level=NULL, conf=0.95) # If base="coverage" and level=NULL, then this function computes the diversity estimates for the minimum among the coverage values for samples extrapolated to double the size of the reference sample.
+inEXTestsHAAPenS <- estimateD(HAAPenincid,
+  datatype = "incidence_freq",
+  base = "coverage", level = NULL, conf = 0.95
+) # If base="coverage" and level=NULL, then this function computes the diversity estimates for the minimum among the coverage values for samples extrapolated to double the size of the reference sample.
 
 # note the level implemented is 0.9805784
 
-inEXTestsHAAPenS<-inEXTestsHAAPenS %>% filter(Order.q == 0)
+inEXTestsHAAPenS <- inEXTestsHAAPenS %>% filter(Order.q == 0)
 ```
 
 Compare estimates
 
 ```{r}
 # Plot observed richness from unstructured data and estimated richness from iNEXT from structured data
-inEXTestsHAAPenS %>% 
-   inner_join(obs_rich_HAA_PenU,
-            by = join_by(Assemblage == cellCode)) %>%
+inEXTestsHAAPenS %>%
+  inner_join(obs_rich_HAA_PenU,
+    by = join_by(Assemblage == cellCode)
+  ) %>%
   ggplot(aes(x = qD, y = n_species)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.98)",
-       y = "Observed richness - unstructured data")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.98)",
+    y = "Observed richness - unstructured data"
+  )
 ```
 
 # Hill-Shannon Diversity (only possible for QDGC) - based on incidence data (structured and unstructured)
@@ -1409,7 +1686,7 @@ Unstructured data for QDGC - with default settings using b3gbi
 
 ```{r}
 # with default settings (coverage 0.95)
-hill1_map_HAA_QDGCU <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence") 
+hill1_map_HAA_QDGCU <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence")
 plot(hill1_map_HAA_QDGCU, title = "Shannon Diversity - unstructured data (0.95 coverage)")
 ```
 
@@ -1417,7 +1694,7 @@ Structured data for QDGC - with default settings using b3gbi and assume_freq = F
 
 ```{r}
 # with default settings (coverage 0.95)
-hill1_map_HAA_QDGCS <- hill1_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence") 
+hill1_map_HAA_QDGCS <- hill1_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence")
 plot(hill1_map_HAA_QDGCS, title = "Shannon Diversity - structured data (0.95 coverage)")
 ```
 
@@ -1425,14 +1702,14 @@ Structured data for QDGC - with default settings using b3gbi and assume_freq = T
 
 ```{r}
 # with default settings (coverage 0.95)
-hill1_map_HAA_QDGCSas <- hill1_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence", assume_freq = T) 
+hill1_map_HAA_QDGCSas <- hill1_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence", assume_freq = T)
 plot(hill1_map_HAA_QDGCSas, title = "Shannon Diversity - structured data (0.95 coverage)")
 ```
 
 Structured QDGC - calculated with iNEXT (i.e., actual survey effort used)
 
 ```{r}
-hill1EstsHAAQDGCS<-inEXTestsHAAQDGCS %>% filter(Order.q == 1)
+hill1EstsHAAQDGCS <- inEXTestsHAAQDGCS %>% filter(Order.q == 1)
 ```
 
 Compare estimates
@@ -1440,93 +1717,112 @@ Compare estimates
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(hill1_map_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-hill1_map_HAA_QDGCU$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCU$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill1_map_HAA_QDGCS$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCS$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill1_map_HAA_QDGCSas$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCSas$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot Shannon Diversity for structured data estimated using b3gbi and Shannon Diversity from iNEXT from structured data (with assume_freq =  F)
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCS$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCS$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon Diversity - structured data (iNEXT - 0.995)",
-       y = "Shannon Diversity - structured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon Diversity - structured data (iNEXT - 0.995)",
+    y = "Shannon Diversity - structured data (b3gbi - 0.95)"
+  )
 ```
 
 ```{r}
 # Plot Shannon Diversity for structured data estimated using b3gbi and Shannon Diversity from iNEXT from structured data (with assume_freq =  T)
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCSas$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCSas$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon Diversity - structured data (iNEXT - 0.995)",
-       y = "Shannon Diversity - structured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon Diversity - structured data (iNEXT - 0.995)",
+    y = "Shannon Diversity - structured data (b3gbi - 0.95)"
+  )
 ```
 
 
 
 ```{r}
 # Plot Shannon Diversity for unstructured data estimated using b3gbi and Shannon Diversity from iNEXT from structured data
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCU$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCU$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon Diversity - structured data (iNEXT - 0.995)",
-       y = "Shannon Diversity - unstructured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon Diversity - structured data (iNEXT - 0.995)",
+    y = "Shannon Diversity - unstructured data (b3gbi - 0.95)"
+  )
 ```
 
 Calculate estimates for unstructured data at different coverage thresholds and compare
 
 ```{r}
 # Get qdgc codes
-Codes<- hill1_map_HAA_QDGCU$data %>% select(QDGCcode) %>% st_drop_geometry()
+Codes <- hill1_map_HAA_QDGCU$data %>%
+  select(QDGCcode) %>%
+  st_drop_geometry()
 
 # identify coverage levels for estimates
-cov<-seq(0.05, 0.95, by = 0.1)
+cov <- seq(0.05, 0.95, by = 0.1)
 
 # loop to estimate shannon diversity for unstructured data using b3gbi at various coverage levels
-UnstrucEsts<-Codes
-for (i in cov){
-  hill1 <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence",  coverage = i)
+UnstrucEsts <- Codes
+for (i in cov) {
+  hill1 <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence", coverage = i)
   hill1 <- hill1$data %>% st_drop_geometry()
-  UnstrucEsts<-cbind(UnstrucEsts, hill1[,'diversity_val'])
-  names(UnstrucEsts)[ncol(UnstrucEsts)]<-i
+  UnstrucEsts <- cbind(UnstrucEsts, hill1[, "diversity_val"])
+  names(UnstrucEsts)[ncol(UnstrucEsts)] <- i
 }
 
-# Estimate shannon diversity for structured data using iNEXT 
-StrucEsts<-Codes
-iNEXTests<-inEXTestsHAAQDGCS %>% filter(Order.q == 1) %>% select(Assemblage, qD)
-StrucEsts<-StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
+# Estimate shannon diversity for structured data using iNEXT
+StrucEsts <- Codes
+iNEXTests <- inEXTestsHAAQDGCS %>%
+  filter(Order.q == 1) %>%
+  select(Assemblage, qD)
+StrucEsts <- StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
 
-StrucEsts<-na.omit(StrucEsts) # remove rows with na
-UnstrucEsts<-na.omit(UnstrucEsts) # remove rows with na
+StrucEsts <- na.omit(StrucEsts) # remove rows with na
+UnstrucEsts <- na.omit(UnstrucEsts) # remove rows with na
 
 # correlation matrix
-ShanEstCor<-cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
-
-# plot correlation
-corrplot(ShanEstCor, method="circle")
+ShanEstCor <- cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
 
 # largest correlation
-ind<-which(ShanEstCor==max(ShanEstCor),arr.ind = TRUE)
+ind <- which(ShanEstCor == max(ShanEstCor), arr.ind = TRUE)
 rownames(ShanEstCor)[ind[, 1]]
 ```
 
@@ -1534,28 +1830,34 @@ Re-run and plot the best options
 
 ```{r}
 # Estimates from b3gbi (coverage 0.45) for unstructured data
-hill1_map_HAA_QDGCU45 <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.45, data_type = "incidence") 
+hill1_map_HAA_QDGCU45 <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.45, data_type = "incidence")
 plot(hill1_map_HAA_QDGCU45, title = "Shannon diversity - unstructured data (0.45 coverage)")
 ```
 
 Compare estimates
 
 ```{r}
-hill1_map_HAA_QDGCU45$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCU45$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot shannon diversity from unstructured data (b3gbi - coverage 0.45) and shannon diversity from iNEXT (0.995) from structured data
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCU45$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCU45$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon diversity - structured data (iNEXT - 0.995)",
-       y = "Shannon diversity - unstructured (b3gbi - 0.45)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon diversity - structured data (iNEXT - 0.995)",
+    y = "Shannon diversity - unstructured (b3gbi - 0.45)"
+  )
 ```
 
 # Hill-Simpson Diversity (only possible for QDGC) - based on incidence data (structured and unstructured)
@@ -1564,7 +1866,7 @@ Unstructured QDGC - with default settings using b3gbi
 
 ```{r}
 # with default settings (coverage 0.95)
-hill2_map_HAA_QDGCU <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence") 
+hill2_map_HAA_QDGCU <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence")
 plot(hill2_map_HAA_QDGCU, title = "Simpson Diversity - unstructured data (0.95 coverage)")
 ```
 
@@ -1572,7 +1874,7 @@ Structured QDGC - with default settings using b3gbi and assume_freq = F
 
 ```{r}
 # with default settings (coverage 0.95)
-hill2_map_HAA_QDGCS <- hill2_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence") 
+hill2_map_HAA_QDGCS <- hill2_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence")
 plot(hill2_map_HAA_QDGCS, title = "Simpson Diversity - structured data (0.95 coverage)")
 ```
 
@@ -1580,7 +1882,7 @@ Structured QDGC - with default settings using b3gbi and assume_frq = T
 
 ```{r}
 # with default settings (coverage 0.95)
-hill2_map_HAA_QDGCSas <- hill2_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence", assume_freq = T) 
+hill2_map_HAA_QDGCSas <- hill2_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence", assume_freq = T)
 plot(hill2_map_HAA_QDGCSas, title = "Simpson Diversity - structured data (0.95 coverage)")
 ```
 
@@ -1588,7 +1890,7 @@ plot(hill2_map_HAA_QDGCSas, title = "Simpson Diversity - structured data (0.95 c
 Structured QDGC - calculated with iNEXT (i.e., actual survey effort used)
 
 ```{r}
-hill2EstsHAAQDGCS<-inEXTestsHAAQDGCS %>% filter(Order.q == 2)
+hill2EstsHAAQDGCS <- inEXTestsHAAQDGCS %>% filter(Order.q == 2)
 ```
 
 Compare estimates
@@ -1596,92 +1898,111 @@ Compare estimates
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(hill2_map_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-hill2_map_HAA_QDGCU$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCU$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill2_map_HAA_QDGCS$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCS$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill2_map_HAA_QDGCSas$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCSas$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot Simpson Diversity for structured data estimated uising b3gbi and Simpson Diversity from iNEXT for structured data (assume_freq for b3gbi = F)
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCS$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCS$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson Diversity - structured data (iNEXT - 0.995)",
-       y = "Simpson Diversity - structured data (b3gbi -0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson Diversity - structured data (iNEXT - 0.995)",
+    y = "Simpson Diversity - structured data (b3gbi -0.95)"
+  )
 ```
 
 ```{r}
 # Plot Simpson Diversity for structured data estimated uising b3gbi and Simpson Diversity from iNEXT for structured data (assume_freq for b3gbi = T)
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCSas$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCSas$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson Diversity - structured data (iNEXT - 0.995)",
-       y = "Simpson Diversity - structured data (b3gbi -0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson Diversity - structured data (iNEXT - 0.995)",
+    y = "Simpson Diversity - structured data (b3gbi -0.95)"
+  )
 ```
 
 
 ```{r}
 # Plot Simpson Diversity for unstructured data estimated using b3gbi and Simpson Diversity from iNEXT from structured data
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCU$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCU$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson Diversity - structured data (iNEXT - 0.995)",
-       y = "Simpson Diversity - unstructured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson Diversity - structured data (iNEXT - 0.995)",
+    y = "Simpson Diversity - unstructured data (b3gbi - 0.95)"
+  )
 ```
 
 Calculate estimates for unstructured data at different coverage thresholds and compare
 
 ```{r}
 # Get qdgc codes
-Codes<- hill2_map_HAA_QDGCU$data %>% select(QDGCcode) %>% st_drop_geometry()
+Codes <- hill2_map_HAA_QDGCU$data %>%
+  select(QDGCcode) %>%
+  st_drop_geometry()
 
 # identify coverage levels for estimates
-cov<-seq(0.05, 0.95, by = 0.1)
+cov <- seq(0.05, 0.95, by = 0.1)
 
 # loop to estimate simpson diversity for unstructured data using b3gbi at various coverage levels
-UnstrucEsts<-Codes
-for (i in cov){
-  hill2 <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence",  coverage = i)
+UnstrucEsts <- Codes
+for (i in cov) {
+  hill2 <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "incidence", coverage = i)
   hill2 <- hill2$data %>% st_drop_geometry()
-  UnstrucEsts<-cbind(UnstrucEsts, hill2[,'diversity_val'])
-  names(UnstrucEsts)[ncol(UnstrucEsts)]<-i
+  UnstrucEsts <- cbind(UnstrucEsts, hill2[, "diversity_val"])
+  names(UnstrucEsts)[ncol(UnstrucEsts)] <- i
 }
 
-# Estimate simpson diversity for structured data using iNEXT 
-StrucEsts<-Codes
-iNEXTests<-inEXTestsHAAQDGCS %>% filter(Order.q == 2) %>% select(Assemblage, qD)
-StrucEsts<-StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
+# Estimate simpson diversity for structured data using iNEXT
+StrucEsts <- Codes
+iNEXTests <- inEXTestsHAAQDGCS %>%
+  filter(Order.q == 2) %>%
+  select(Assemblage, qD)
+StrucEsts <- StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
 
-StrucEsts<-na.omit(StrucEsts) # remove rows with na
-UnstrucEsts<-na.omit(UnstrucEsts) # remove rows with na
+StrucEsts <- na.omit(StrucEsts) # remove rows with na
+UnstrucEsts <- na.omit(UnstrucEsts) # remove rows with na
 
 # correlation matrix
-SimpEstCor<-cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
-
-# plot correlation
-corrplot(SimpEstCor, method="circle")
+SimpEstCor <- cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
 
 # largest correlation
-ind<-which(SimpEstCor==max(SimpEstCor),arr.ind = TRUE)
+ind <- which(SimpEstCor == max(SimpEstCor), arr.ind = TRUE)
 rownames(SimpEstCor)[ind[, 1]]
 ```
 
@@ -1689,28 +2010,34 @@ Re-run and plot the best options
 
 ```{r}
 # Estimates from b3gbi (coverage 0.45) for unstructured data
-hill2_map_HAA_QDGCU45 <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.45, data_type = "incidence") 
+hill2_map_HAA_QDGCU45 <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.45, data_type = "incidence")
 plot(hill2_map_HAA_QDGCU45, title = "Simpson diversity - unstructured data (0.45 coverage)")
 ```
 
 Compare estimates
 
 ```{r}
-hill2_map_HAA_QDGCU45$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCU45$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot simpson diversity from unstructured data (b3gbi - coverage 0.45) and simpson diversity from iNEXT (0.995) from structured data
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCU45$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCU45$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson diversity - structured data (iNEXT - 0.995)",
-       y = "Simpson diversity - unstructured data (b3gbi - 0.45)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson diversity - structured data (iNEXT - 0.995)",
+    y = "Simpson diversity - unstructured data (b3gbi - 0.45)"
+  )
 ```
 
 ### Estimated richness - based on incidence data (structured) abundance data (unstructured)
@@ -1719,7 +2046,7 @@ Unstructured QDGC - b3gbi with default settings
 
 ```{r}
 # with default settings (coverage 0.95)
-hill0_map_HAA_QDGCUAb <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("abundance")) 
+hill0_map_HAA_QDGCUAb <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("abundance"))
 plot(hill0_map_HAA_QDGCUAb, title = "Estimated Bird Species Richness - unstructured data (0.95 coverage)")
 ```
 
@@ -1727,7 +2054,7 @@ Structured QDGC - b3gbi with default settings
 
 ```{r}
 # with default settings (coverage 0.95)
-hill0_map_HAA_QDGCSAb <- hill0_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("abundance")) 
+hill0_map_HAA_QDGCSAb <- hill0_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = c("abundance"))
 plot(hill0_map_HAA_QDGCSAb, title = "Estimated Bird Species Richness - structured data (0.95 coverage)")
 ```
 
@@ -1736,76 +2063,89 @@ Compare estimates
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(map_obs_rich_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-hill0_map_HAA_QDGCUAb$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCUAb$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill0_map_HAA_QDGCSAb$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCSAb$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 
 ```{r}
 # Plot estimated richness for structured data (b3gbi - coverage 0.95 using abundance) and estimated richness from iNEXT for structured data using incidence
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCSAb$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCSAb$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT - 0.995 - incidence)",
-       y = "Estimated richness - structured data (b3gbi - 0.95 - abundance)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT - 0.995 - incidence)",
+    y = "Estimated richness - structured data (b3gbi - 0.95 - abundance)"
+  )
 ```
 
 ```{r}
 # Plot estimated richness for unstructured data (b3gbi - coverage 0.95, abundance) and estimated richness from iNEXT for structured data (incidence)
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCUAb$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCUAb$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT (incidence) - 0.995)",
-       y = "Estimated richness - unstructured data (b3gbi(abundance) - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT (incidence) - 0.995)",
+    y = "Estimated richness - unstructured data (b3gbi(abundance) - 0.95)"
+  )
 ```
 
 Calculate estimates for unstructured data at different coverage thresholds and compare
 
 ```{r}
 # Get qdgc codes
-Codes<- map_obs_rich_HAA_QDGCU$data %>% select(QDGCcode) %>% st_drop_geometry()
+Codes <- map_obs_rich_HAA_QDGCU$data %>%
+  select(QDGCcode) %>%
+  st_drop_geometry()
 
 # identify coverage levels for estimates
-cov<-seq(0.05, 0.95, by = 0.1)
+cov <- seq(0.05, 0.95, by = 0.1)
 
 # loop to estimate richness for unstructured data using b3gbi at various coverage levels
-UnstrucEsts<-Codes
-for (i in cov){
-  hill0 <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium",  coverage = i, data_type = "abundance") 
+UnstrucEsts <- Codes
+for (i in cov) {
+  hill0 <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = i, data_type = "abundance")
   hill0 <- hill0$data %>% st_drop_geometry()
-  UnstrucEsts<-cbind(UnstrucEsts, hill0[,'diversity_val'])
-  names(UnstrucEsts)[ncol(UnstrucEsts)]<-i
+  UnstrucEsts <- cbind(UnstrucEsts, hill0[, "diversity_val"])
+  names(UnstrucEsts)[ncol(UnstrucEsts)] <- i
 }
 
-# Estimate richness for structured data using iNEXT 
-StrucEsts<-Codes
-iNEXTests<-richEstsHAAQDGCS %>% filter(Order.q == 0) %>% select(Assemblage, qD)
-StrucEsts<-StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
+# Estimate richness for structured data using iNEXT
+StrucEsts <- Codes
+iNEXTests <- richEstsHAAQDGCS %>%
+  filter(Order.q == 0) %>%
+  select(Assemblage, qD)
+StrucEsts <- StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
 
-StrucEsts<-na.omit(StrucEsts) # remove rows with na
-UnstrucEsts<-na.omit(UnstrucEsts) # remove rows with na
+StrucEsts <- na.omit(StrucEsts) # remove rows with na
+UnstrucEsts <- na.omit(UnstrucEsts) # remove rows with na
 
 # correlation matrix
-EstCor<-cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
-
-# plot correlation
-corrplot(EstCor, method="circle")
+EstCor <- cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
 
 # largest correlation
-ind<-which(EstCor==max(EstCor),arr.ind = TRUE)
+ind <- which(EstCor == max(EstCor), arr.ind = TRUE)
 rownames(EstCor)[ind[, 1]]
 ```
 
@@ -1813,28 +2153,34 @@ Re-run and plot the best options
 
 ```{r}
 # Estimates from b3gbi (coverage 0.55) for unstructured data
-hill0_map_HAA_QDGCU55Ab <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.55, data_type = "abundance") 
+hill0_map_HAA_QDGCU55Ab <- hill0_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.55, data_type = "abundance")
 plot(hill0_map_HAA_QDGCU55Ab, title = "Estimated Bird Species Richness - unstructured data (0.55 coverage)")
 ```
 
 Compare estimates
 
 ```{r}
-hill0_map_HAA_QDGCU55Ab$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill0_map_HAA_QDGCU55Ab$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot estimated richness for unstructured data (b3gbi (abundance) - coverage 0.55) and estimated richness from iNEXT (incidence - 0.995 ) from structured data
-richEstsHAAQDGCS %>% 
-   inner_join(hill0_map_HAA_QDGCU55Ab$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+richEstsHAAQDGCS %>%
+  inner_join(hill0_map_HAA_QDGCU55Ab$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Estimated richness - structured data (iNEXT (incidence) - 0.995)",
-       y = "Estimated richness - unstructured data (b3gbi (abundance) - 0.55)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data (iNEXT (incidence) - 0.995)",
+    y = "Estimated richness - unstructured data (b3gbi (abundance) - 0.55)"
+  )
 ```
 
 # Hill-Shannon Diversity (only possible for QDGC) - based on incidence (structured) and abundance (unstructured)
@@ -1843,7 +2189,7 @@ Unstructured data for QDGC - with default settings using b3gbi
 
 ```{r}
 # with default settings (coverage 0.95)
-hill1_map_HAA_QDGCUAb <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance") 
+hill1_map_HAA_QDGCUAb <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance")
 plot(hill1_map_HAA_QDGCUAb, title = "Shannon Diversity - unstructured data (0.95 coverage)")
 ```
 
@@ -1851,7 +2197,7 @@ Structured data for QDGC - with default settings using b3gbi
 
 ```{r}
 # with default settings (coverage 0.95)
-hill1_map_HAA_QDGCSAb <- hill1_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance") 
+hill1_map_HAA_QDGCSAb <- hill1_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance")
 plot(hill1_map_HAA_QDGCSAb, title = "Shannon Diversity - structured data (0.95 coverage)")
 ```
 
@@ -1860,76 +2206,89 @@ Compare estimates
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(hill1_map_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-hill1_map_HAA_QDGCUAb$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCUAb$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill1_map_HAA_QDGCSAb$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCSAb$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot Shannon Diversity for structured data estimated using b3gbi and Shannon Diversity from iNEXT from structured data
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCSAb$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCSAb$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon Diversity - structured data (iNEXT - 0.995)",
-       y = "Shannon Diversity - structured data (b3gbi - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon Diversity - structured data (iNEXT - 0.995)",
+    y = "Shannon Diversity - structured data (b3gbi - 0.95)"
+  )
 ```
 
 
 ```{r}
 # Plot Shannon Diversity for unstructured data estimated using b3gbi and Shannon Diversity from iNEXT from structured data
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCUAb$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCUAb$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon Diversity - structured data (iNEXT (incidence) - 0.995)",
-       y = "Shannon Diversity - unstructured data (b3gbi (abundance) - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon Diversity - structured data (iNEXT (incidence) - 0.995)",
+    y = "Shannon Diversity - unstructured data (b3gbi (abundance) - 0.95)"
+  )
 ```
 
 Calculate estimates for unstructured data at different coverage thresholds and compare
 
 ```{r}
 # Get qdgc codes
-Codes<- hill1_map_HAA_QDGCU$data %>% select(QDGCcode) %>% st_drop_geometry()
+Codes <- hill1_map_HAA_QDGCU$data %>%
+  select(QDGCcode) %>%
+  st_drop_geometry()
 
 # identify coverage levels for estimates
-cov<-seq(0.05, 0.95, by = 0.1)
+cov <- seq(0.05, 0.95, by = 0.1)
 
 # loop to estimate shannon diversity for unstructured data using b3gbi at various coverage levels
-UnstrucEsts<-Codes
-for (i in cov){
-  hill1 <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance",  coverage = i)
+UnstrucEsts <- Codes
+for (i in cov) {
+  hill1 <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance", coverage = i)
   hill1 <- hill1$data %>% st_drop_geometry()
-  UnstrucEsts<-cbind(UnstrucEsts, hill1[,'diversity_val'])
-  names(UnstrucEsts)[ncol(UnstrucEsts)]<-i
+  UnstrucEsts <- cbind(UnstrucEsts, hill1[, "diversity_val"])
+  names(UnstrucEsts)[ncol(UnstrucEsts)] <- i
 }
 
-# Estimate shannon diversity for structured data using iNEXT 
-StrucEsts<-Codes
-iNEXTests<-inEXTestsHAAQDGCS %>% filter(Order.q == 1) %>% select(Assemblage, qD)
-StrucEsts<-StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
+# Estimate shannon diversity for structured data using iNEXT
+StrucEsts <- Codes
+iNEXTests <- inEXTestsHAAQDGCS %>%
+  filter(Order.q == 1) %>%
+  select(Assemblage, qD)
+StrucEsts <- StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
 
-StrucEsts<-na.omit(StrucEsts) # remove rows with na
-UnstrucEsts<-na.omit(UnstrucEsts) # remove rows with na
+StrucEsts <- na.omit(StrucEsts) # remove rows with na
+UnstrucEsts <- na.omit(UnstrucEsts) # remove rows with na
 
 # correlation matrix
-ShanEstCor<-cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
-
-# plot correlation
-corrplot(ShanEstCor, method="circle")
+ShanEstCor <- cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
 
 # largest correlation
-ind<-which(ShanEstCor==max(ShanEstCor),arr.ind = TRUE)
+ind <- which(ShanEstCor == max(ShanEstCor), arr.ind = TRUE)
 rownames(ShanEstCor)[ind[, 1]]
 ```
 
@@ -1937,28 +2296,34 @@ Re-run and plot the best options
 
 ```{r}
 # Estimates from b3gbi (coverage 0.15) for unstructured data
-hill1_map_HAA_QDGCU15Ab <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.15, data_type = "abundance") 
+hill1_map_HAA_QDGCU15Ab <- hill1_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.15, data_type = "abundance")
 plot(hill1_map_HAA_QDGCU15Ab, title = "Shannon diversity - unstructured data (0.15 coverage)")
 ```
 
 Compare estimates
 
 ```{r}
-hill1_map_HAA_QDGCU15Ab$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill1_map_HAA_QDGCU15Ab$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot shannon diversity from unstructured data (b3gbi (abundance) - coverage 0.15) and shannon diversity from iNEXT (incidence - 0.995) from structured data
-hill1EstsHAAQDGCS %>% 
-   inner_join(hill1_map_HAA_QDGCU15Ab$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill1EstsHAAQDGCS %>%
+  inner_join(hill1_map_HAA_QDGCU15Ab$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Shannon diversity - structured data (iNEXT (incidence) - 0.995)",
-       y = "Shannon diversity - unstructured (b3gbi (abundance) - 0.15)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon diversity - structured data (iNEXT (incidence) - 0.995)",
+    y = "Shannon diversity - unstructured (b3gbi (abundance) - 0.15)"
+  )
 ```
 
 # Hill-Simpson Diversity (only possible for QDGC) - based on incidence (structured) and abundance (unstructured)
@@ -1967,7 +2332,7 @@ Unstructured QDGC - with default settings using b3gbi
 
 ```{r}
 # with default settings (coverage 0.95)
-hill2_map_HAA_QDGCUAb <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance") 
+hill2_map_HAA_QDGCUAb <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance")
 plot(hill2_map_HAA_QDGCUAb, title = "Simpson Diversity - unstructured data (0.95 coverage)")
 ```
 
@@ -1975,7 +2340,7 @@ Structured QDGC - with default settings using b3gbi
 
 ```{r}
 # with default settings (coverage 0.95)
-hill2_map_HAA_QDGCSAb <- hill2_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance") 
+hill2_map_HAA_QDGCSAb <- hill2_map(HAAStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance")
 plot(hill2_map_HAA_QDGCSAb, title = "Simpson Diversity - structured data (0.95 coverage)")
 ```
 
@@ -1984,76 +2349,89 @@ Compare estimates
 ```{r}
 # get qdgc codes for the b3gbi estimates
 centroids <- st_centroid(hill2_map_HAA_QDGCU$data)
-Hillcoords<-st_coordinates(centroids)
+Hillcoords <- st_coordinates(centroids)
 
-hill2_map_HAA_QDGCUAb$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCUAb$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 
-hill2_map_HAA_QDGCSAb$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCSAb$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot Simpson Diversity for structured data estimated using b3gbi (abundance) and Simpson Diversity from iNEXT for structured data (incidence)
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCSAb$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCSAb$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson Diversity - structured data (iNEXT (incidence) - 0.995)",
-       y = "Simpson Diversity - structured data (b3gbi (abundance) -0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson Diversity - structured data (iNEXT (incidence) - 0.995)",
+    y = "Simpson Diversity - structured data (b3gbi (abundance) -0.95)"
+  )
 ```
 
 
 ```{r}
 # Plot Simpson Diversity for unstructured data estimated using b3gbi (aundance) and Simpson Diversity from iNEXT from structured data (incidence)
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCUAb$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCUAb$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson Diversity - structured data (iNEXT (incidence) - 0.995)",
-       y = "Simpson Diversity - unstructured data (b3gbi (abundance) - 0.95)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson Diversity - structured data (iNEXT (incidence) - 0.995)",
+    y = "Simpson Diversity - unstructured data (b3gbi (abundance) - 0.95)"
+  )
 ```
 
 Calculate estimates for unstructured data at different coverage thresholds and compare
 
 ```{r}
 # Get qdgc codes
-Codes<- hill2_map_HAA_QDGCU$data %>% select(QDGCcode) %>% st_drop_geometry()
+Codes <- hill2_map_HAA_QDGCU$data %>%
+  select(QDGCcode) %>%
+  st_drop_geometry()
 
 # identify coverage levels for estimates
-cov<-seq(0.05, 0.95, by = 0.1)
+cov <- seq(0.05, 0.95, by = 0.1)
 
 # loop to estimate simpson diversity for unstructured data using b3gbi at various coverage levels
-UnstrucEsts<-Codes
-for (i in cov){
-  hill2 <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance",  coverage = i)
+UnstrucEsts <- Codes
+for (i in cov) {
+  hill2 <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", data_type = "abundance", coverage = i)
   hill2 <- hill2$data %>% st_drop_geometry()
-  UnstrucEsts<-cbind(UnstrucEsts, hill2[,'diversity_val'])
-  names(UnstrucEsts)[ncol(UnstrucEsts)]<-i
+  UnstrucEsts <- cbind(UnstrucEsts, hill2[, "diversity_val"])
+  names(UnstrucEsts)[ncol(UnstrucEsts)] <- i
 }
 
-# Estimate simpson diversity for structured data using iNEXT 
-StrucEsts<-Codes
-iNEXTests<-inEXTestsHAAQDGCS %>% filter(Order.q == 2) %>% select(Assemblage, qD)
-StrucEsts<-StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
+# Estimate simpson diversity for structured data using iNEXT
+StrucEsts <- Codes
+iNEXTests <- inEXTestsHAAQDGCS %>%
+  filter(Order.q == 2) %>%
+  select(Assemblage, qD)
+StrucEsts <- StrucEsts %>% left_join(iNEXTests, by = join_by(QDGCcode == Assemblage))
 
-StrucEsts<-na.omit(StrucEsts) # remove rows with na
-UnstrucEsts<-na.omit(UnstrucEsts) # remove rows with na
+StrucEsts <- na.omit(StrucEsts) # remove rows with na
+UnstrucEsts <- na.omit(UnstrucEsts) # remove rows with na
 
 # correlation matrix
-SimpEstCor<-cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
-
-# plot correlation
-corrplot(SimpEstCor, method="circle")
+SimpEstCor <- cor(UnstrucEsts[2:ncol(UnstrucEsts)], StrucEsts[2], method = "pearson")
 
 # largest correlation
-ind<-which(SimpEstCor==max(SimpEstCor),arr.ind = TRUE)
+ind <- which(SimpEstCor == max(SimpEstCor), arr.ind = TRUE)
 rownames(SimpEstCor)[ind[, 1]]
 ```
 
@@ -2061,26 +2439,32 @@ Re-run and plot the best options
 
 ```{r}
 # Estimates from b3gbi (coverage 0.05) for unstructured data
-hill2_map_HAA_QDGCU05Ab <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.05, data_type = "abundance") 
+hill2_map_HAA_QDGCU05Ab <- hill2_map(HAAunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.05, data_type = "abundance")
 plot(hill2_map_HAA_QDGCU05Ab, title = "Simpson diversity - unstructured data (0.05 coverage)")
 ```
 
 Compare estimates
 
 ```{r}
-hill2_map_HAA_QDGCU05Ab$data$QDGCcode<-apply(Hillcoords[,c('Y','X')], 1, function(y) get_qdgcCode(y['Y'],y['X']))
+hill2_map_HAA_QDGCU05Ab$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
 ```
 
 ```{r}
 # Plot simpson diversity from unstructured data (b3gbi (abundance) - coverage 0.05) and simpson diversity from iNEXT (incidence - 0.995) from structured data
-hill2EstsHAAQDGCS %>% 
-   inner_join(hill2_map_HAA_QDGCU05Ab$data,
-            by = join_by(Assemblage == QDGCcode)) %>%
+hill2EstsHAAQDGCS %>%
+  inner_join(hill2_map_HAA_QDGCU05Ab$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
   ggplot(aes(x = qD, y = diversity_val)) +
   geom_point(color = "#66A61E") +
-  ggpubr::stat_cor(mapping = aes(color = NULL),
-           label.x.npc = "centre",
-           label.y.npc = "bottom",
-           method = "pearson") + labs(x = "Simpson diversity - structured data (iNEXT (incidence) - 0.995)",
-       y = "Simpson diversity - unstructured data (b3gbi (abundance) - 0.05)")
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson diversity - structured data (iNEXT (incidence) - 0.995)",
+    y = "Simpson diversity - unstructured data (b3gbi (abundance) - 0.05)"
+  )
 ```
