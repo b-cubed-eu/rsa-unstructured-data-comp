@@ -1,0 +1,1122 @@
+---
+title: "Generate results for reporting"
+author: "Katelyn Faulkner"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: show
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Load packages
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse) # Data wrangling and visualisation
+library(magrittr) # Pipe delimiter
+library(here) # Relative paths
+library(sf) # Work with spatial data
+library(rgbif) # To request occurrence cubes
+library(gcube) # To create a bespoke cube
+library(iNEXT) # To calculate sample coverage
+library(b3gbi) # To calculate indicators
+library(ggpubr) # Correlations
+library(RColorBrewer) # Colour palette
+require(ggplot2) # plots
+require(ggpubr) # multipanal plots
+```
+
+# Create file paths
+
+```{r}
+## Data path and create directory if necessary
+data_path <- here::here("data", "processed")
+
+fig_path <- here::here("output")
+dir.create(fig_path, showWarnings = FALSE, recursive = TRUE)
+```
+
+# Load in data
+
+```{r}
+## Western Cape
+
+SABAP2WCQDGCYearSamp<-read.csv(file.path(data_path, "SABAP2_QDGC_WC_data.csv"))
+WCQDGCincid<-readRDS(file.path(data_path, "SABAP2_QDGC_WC_iNEXT.rds"))
+birdcubeWCYearQDGC<-read.csv(file.path(data_path, "Unstruc_QDGC_WC_data.csv"))
+
+SABAP2WCPenYearSamp<-read.csv(file.path(data_path, "SABAP2_Pentad_WC_data.csv"))
+WCPenincid<-readRDS(file.path(data_path, "SABAP2_Pentad_WC_iNEXT.rds"))
+birdcubeWCYearPentad<-read.csv(file.path(data_path, "Unstruc_Pentad_WC_data.csv"))
+
+## Hessequa
+
+SABAP2HAAQDGCYearSamp<-read.csv(file.path(data_path, "SABAP2_QDGC_HAA_data.csv"))
+HAAQDGCincid<-readRDS(file.path(data_path, "SABAP2_QDGC_HAA_iNEXT.rds"))
+birdcubeHAAYearQDGC<-read.csv(file.path(data_path, "Unstruc_QDGC_HAA_data.csv"))
+
+SABAP2HAAPenYearSamp<-read.csv(file.path(data_path, "SABAP2_Pentad_HAA_data.csv"))
+HAAPenincid<-readRDS(file.path(data_path, "SABAP2_Pentad_HAA_iNEXT.rds"))
+birdcubeHAAYearPentad<-read.csv(file.path(data_path, "Unstruc_Pentad_HAA_data.csv"))
+```
+
+# Create a custom color scale
+
+```{r}
+## For species commonness
+myColors <- brewer.pal(5, "Dark2")
+names(myColors) <- c(
+  "Very rare", "Rare", "Common",
+  "Very common", "Extremely common"
+)
+colScale <- scale_color_manual(
+  name = "Rarity",
+  values = myColors, drop = FALSE
+)
+fillScale <- scale_fill_manual(
+  name = "Rarity",
+  values = myColors, drop=FALSE
+)
+```
+
+# Plots
+
+## No observations per year plot
+
+```{r}
+options(scipen = 999)
+
+p1<-SABAP2WCQDGCYearSamp %>%
+  group_by(year) %>%
+  summarise(n = sum(n)) %>%
+  ggplot(aes(x = year, y = n)) +
+  geom_col(fill = "#1B9E77") +
+  labs(
+    x = "Year",
+    y = "Number of observations"
+  )+
+  theme_bw(base_size = 12)
+
+p2<-birdcubeWCYearQDGC %>%
+  group_by(year) %>%
+  summarise(n = sum(n)) %>%
+  ggplot(aes(x = year, y = n)) +
+  geom_col(fill = "#1B9E77") +
+  labs(
+    x = "Year",
+    y = "Number of observations"
+  )+
+  theme_bw(base_size = 12) 
+
+obsP<-ggarrange(p1,p2,nrow = 1, labels = c("A.", "B."))
+
+ggsave(filename = "No_obs_year.jpg", device = "jpeg", path = fig_path, plot = obsP, width = 8, height = 4, dpi = 300)
+```
+
+## Range overlap and size plots
+
+### Analysis and plots Western Cape
+
+#### QDGC
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2WCQDGCYearSamp$species) %>%
+  na.omit()
+```
+
+```{r}
+# function to compare ranges
+range_comp <- function(sel_species, period = 2015:2023,
+                       dataset1 = SABAP2WCQDGCYearSamp,
+                       dataset2 = birdcubeWCYearQDGC) {
+  # We filter both datasets for the species and period of interest
+  # and group them by QDGC
+  set_sabap2 <- dataset1 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$qdgccode) %>%
+    summarise(n = n()) # no observations rather than no individuals
+
+  set_cube <- dataset2 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$qdgccode) %>%
+    summarise(n = sum(.data$n))
+
+  total_sabap2 <- length(set_sabap2$qdgccode)
+  perc_sabap2 <- (total_sabap2 / 247) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  total_cube <- length(set_cube$qdgccode)
+  perc_cube <- (total_cube / 247) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  overlap_all_sabap2_cube <- length(
+    which(set_cube$qdgccode %in% unique(dataset1$qdgccode))
+  )
+  perc_overlap_all <- (overlap_all_sabap2_cube / 247) * 100 # have taken the value to be total number of grid cells in the sabap2 data
+
+  total_overlap <- length(which(set_cube$qdgccode %in% set_sabap2$qdgccode))
+  perc <- (total_overlap / total_sabap2) * 100
+
+  list(
+    total_sabap2, perc_sabap2,
+    total_cube, perc_cube,
+    overlap_all_sabap2_cube, perc_overlap_all,
+    total_overlap, perc
+  )
+}
+```
+
+```{r}
+# run function
+comp_range_data <- as.data.frame(studied_spec)
+comp_range_data$sabap2_squares <- NA
+comp_range_data$perc_sabap2_total_sabap2 <- NA
+comp_range_data$cube_squares <- NA
+comp_range_data$perc_cube_total_cube <- NA
+comp_range_data$overlap_birdcube_total_sabap2 <- NA
+comp_range_data$perc_birdcube_total_sabap2 <- NA
+comp_range_data$overlap_birdcube_spec_sabap2 <- NA
+comp_range_data$percentage_birdcube_spec_sabap2 <- NA
+
+for (i in studied_spec) {
+  test <- range_comp(i, period = 2015:2023)
+
+  comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
+  comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
+  comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
+  comp_range_data[comp_range_data$studied_spec == i, 5] <- test[4]
+  comp_range_data[comp_range_data$studied_spec == i, 6] <- test[5]
+  comp_range_data[comp_range_data$studied_spec == i, 7] <- test[6]
+  comp_range_data[comp_range_data$studied_spec == i, 8] <- test[7]
+  comp_range_data[comp_range_data$studied_spec == i, 9] <- test[8]
+}
+```
+
+Range overlap
+
+```{r}
+# plot percentage range overlap
+RangeOWCQDGC<-comp_range_data %>%
+  inner_join(SABAP2WCQDGCYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common",
+  "Very common", "Extremely common"))) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2, fill = category)) +
+  geom_histogram() +  
+  fillScale +
+  labs(
+    x = "Percentage range overlap",
+    y = "Number of species"
+  ) +
+  theme_bw(base_size = 12) + theme(legend.position = "none")+
+  annotate("text", x=50, y=70, label= "mean = 69%")
+
+RangeOWCQDGC
+```
+
+Range size
+
+```{r}
+# Plot number of grid cells in which species recorded in SABAP2 vs number of cells in which recorded in unstructured data
+options(scipen = 9)
+RangeSWCQDGC<-comp_range_data %>%
+  inner_join(SABAP2WCQDGCYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common"))) %>%
+  ggplot(aes(x = sabap2_squares, y = cube_squares, color = category)) +
+  geom_point() +
+  colScale +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of squares occupied\nby species in SABAP2 dataset",
+    y = "Number of squares occupied\nby species in cube dataset"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")+ guides(
+color = guide_legend(title = "Rarity", override.aes = aes(label = ""))
+)+
+  theme(legend.position = "none")
+
+RangeSWCQDGC
+```
+
+#### Pentad
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2WCPenYearSamp$species) %>%
+  na.omit()
+```
+
+```{r}
+# function to compare ranges
+range_comp <- function(sel_species, period = 2015:2023,
+                       dataset1 = SABAP2WCPenYearSamp,
+                       dataset2 = birdcubeWCYearPentad) {
+  # We filter both datasets for the species and period of interest
+  # and group them by pentad
+  set_sabap2 <- dataset1 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = n()) # no observations rather than no individuals
+
+  set_cube <- dataset2 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = sum(.data$n))
+
+  total_sabap2 <- length(set_sabap2$pentad)
+  perc_sabap2 <- (total_sabap2 / 1842) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  total_cube <- length(set_cube$pentad)
+  perc_cube <- (total_cube / 1842) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  overlap_all_sabap2_cube <- length(
+    which(set_cube$pentad %in% unique(dataset1$pentad))
+  )
+  perc_overlap_all <- (overlap_all_sabap2_cube / 1842) * 100 # have taken the value to be total number of grid cells in the sabap2 data
+
+  total_overlap <- length(which(set_cube$pentad %in% set_sabap2$pentad))
+  perc <- (total_overlap / total_sabap2) * 100
+
+  list(
+    total_sabap2, perc_sabap2,
+    total_cube, perc_cube,
+    overlap_all_sabap2_cube, perc_overlap_all,
+    total_overlap, perc
+  )
+}
+```
+
+```{r}
+# run function
+comp_range_data <- as.data.frame(studied_spec)
+comp_range_data$sabap2_squares <- NA
+comp_range_data$perc_sabap2_total_sabap2 <- NA
+comp_range_data$cube_squares <- NA
+comp_range_data$perc_cube_total_cube <- NA
+comp_range_data$overlap_birdcube_total_sabap2 <- NA
+comp_range_data$perc_birdcube_total_sabap2 <- NA
+comp_range_data$overlap_birdcube_spec_sabap2 <- NA
+comp_range_data$percentage_birdcube_spec_sabap2 <- NA
+
+for (i in studied_spec) {
+  test <- range_comp(i, period = 2015:2023)
+
+  comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
+  comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
+  comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
+  comp_range_data[comp_range_data$studied_spec == i, 5] <- test[4]
+  comp_range_data[comp_range_data$studied_spec == i, 6] <- test[5]
+  comp_range_data[comp_range_data$studied_spec == i, 7] <- test[6]
+  comp_range_data[comp_range_data$studied_spec == i, 8] <- test[7]
+  comp_range_data[comp_range_data$studied_spec == i, 9] <- test[8]
+}
+```
+
+Range overlap
+
+```{r}
+# plot percentage range overlap
+RangeOWCPen<-comp_range_data %>%
+  inner_join(SABAP2WCPenYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common"))) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(
+    x = "Percentage range overlap",
+    y = "Number of species"
+  )+
+  theme_bw(base_size = 12) + theme(legend.position = "none")+
+  annotate("text", x=50, y=70, label= "mean = 52%")
+
+RangeOWCPen
+```
+
+Range size
+
+```{r}
+# Plot number of grid cells in which species recorded in SABAP2 vs number of cells in which recorded in unstructured data
+RangeSWCPen<-comp_range_data %>%
+  inner_join(SABAP2WCPenYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common")))%>%
+  ggplot(aes(x = sabap2_squares, y = cube_squares, color = category)) +
+  geom_point() +
+  colScale +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of squares occupied\nby species in SABAP2 dataset",
+    y = "Number of squares occupied\nby species in cube dataset"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")+ guides(
+color = guide_legend(title = "Rarity", override.aes = aes(label = ""))
+) + theme(legend.position = "none")
+
+RangeSWCPen
+```
+
+### Analysis and plots Hessequa
+
+#### QDGC
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2HAAQDGCYearSamp$species) %>%
+  na.omit()
+```
+
+```{r}
+# function to compare ranges
+range_comp <- function(sel_species, period = 2015:2023,
+                       dataset1 = SABAP2HAAQDGCYearSamp,
+                       dataset2 = birdcubeHAAYearQDGC) {
+  # We filter both datasets for the species and period of interest
+  # and group them by QDGC
+  set_sabap2 <- dataset1 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$qdgccode) %>%
+    summarise(n = n()) # no observations rather than no individuals
+
+  set_cube <- dataset2 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$qdgccode) %>%
+    summarise(n = sum(.data$n))
+
+  total_sabap2 <- length(set_sabap2$qdgccode)
+  perc_sabap2 <- (total_sabap2 / 15) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  total_cube <- length(set_cube$qdgccode)
+  perc_cube <- (total_cube / 15) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  overlap_all_sabap2_cube <- length(
+    which(set_cube$qdgccode %in% unique(dataset1$qdgccode))
+  )
+  perc_overlap_all <- (overlap_all_sabap2_cube / 15) * 100 # have taken the value to be total number of grid cells in the sabap2 data
+
+  total_overlap <- length(which(set_cube$qdgccode %in% set_sabap2$qdgccode))
+  perc <- (total_overlap / total_sabap2) * 100
+
+  list(
+    total_sabap2, perc_sabap2,
+    total_cube, perc_cube,
+    overlap_all_sabap2_cube, perc_overlap_all,
+    total_overlap, perc
+  )
+}
+```
+
+```{r}
+# run function
+comp_range_data <- as.data.frame(studied_spec)
+comp_range_data$sabap2_squares <- NA
+comp_range_data$perc_sabap2_total_sabap2 <- NA
+comp_range_data$cube_squares <- NA
+comp_range_data$perc_cube_total_cube <- NA
+comp_range_data$overlap_birdcube_total_sabap2 <- NA
+comp_range_data$perc_birdcube_total_sabap2 <- NA
+comp_range_data$overlap_birdcube_spec_sabap2 <- NA
+comp_range_data$percentage_birdcube_spec_sabap2 <- NA
+
+for (i in studied_spec) {
+  test <- range_comp(i, period = 2015:2023)
+
+  comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
+  comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
+  comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
+  comp_range_data[comp_range_data$studied_spec == i, 5] <- test[4]
+  comp_range_data[comp_range_data$studied_spec == i, 6] <- test[5]
+  comp_range_data[comp_range_data$studied_spec == i, 7] <- test[6]
+  comp_range_data[comp_range_data$studied_spec == i, 8] <- test[7]
+  comp_range_data[comp_range_data$studied_spec == i, 9] <- test[8]
+}
+```
+
+Range overlap
+
+```{r}
+# plot percentage range overlap
+RangeOHAAQDGC<-comp_range_data %>%
+  inner_join(SABAP2HAAQDGCYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common"))) %>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(
+    x = "Percentage range overlap",
+    y = "Number of species"
+  )+
+  theme_bw(base_size = 12)+ theme(legend.position = "none")+
+  annotate("text", x=50, y=110, label= "mean = 65%")
+
+RangeOHAAQDGC
+```
+
+Range size
+
+```{r}
+# Plot number of grid cells in which species recorded in SABAP2 vs number of cells in which recorded in unstructured data
+RangeSHAAQDGC<-comp_range_data %>%
+  inner_join(SABAP2HAAQDGCYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common")))%>%
+  ggplot(aes(x = sabap2_squares, y = cube_squares, color = category)) +
+  geom_point() +
+  colScale +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of squares occupied\nby species in SABAP2 dataset",
+    y = "Number of squares occupied\nby species in cube dataset"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")+ guides(
+color = guide_legend(title = "Rarity", override.aes = aes(label = ""))
+) + theme(legend.position = "none")
+
+RangeSHAAQDGC
+```
+
+#### Pentad
+
+```{r}
+# species recorded in sabap2
+studied_spec <- unique(SABAP2HAAPenYearSamp$species) %>%
+  na.omit()
+```
+
+```{r}
+# function to compare ranges
+range_comp <- function(sel_species, period = 2015:2023,
+                       dataset1 = SABAP2HAAPenYearSamp,
+                       dataset2 = birdcubeHAAYearPentad) {
+  # We filter both datasets for the species and period of interest
+  # and group them by pentad
+  set_sabap2 <- dataset1 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = n()) # no observations rather than no individuals
+
+  set_cube <- dataset2 %>%
+    filter(
+      .data$species %in% sel_species,
+      .data$year %in% period
+    ) %>%
+    group_by(.data$pentad) %>%
+    summarise(n = sum(.data$n))
+
+  total_sabap2 <- length(set_sabap2$pentad)
+  perc_sabap2 <- (total_sabap2 / 77) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  total_cube <- length(set_cube$pentad)
+  perc_cube <- (total_cube / 77) * 100 # have taken the value to be total number of grid cells in area of interest
+
+  overlap_all_sabap2_cube <- length(
+    which(set_cube$pentad %in% unique(dataset1$pentad))
+  )
+  perc_overlap_all <- (overlap_all_sabap2_cube / 77) * 100 # have taken the value to be total number of grid cells in the sabap2 data
+
+  total_overlap <- length(which(set_cube$pentad %in% set_sabap2$pentad))
+  perc <- (total_overlap / total_sabap2) * 100
+
+  list(
+    total_sabap2, perc_sabap2,
+    total_cube, perc_cube,
+    overlap_all_sabap2_cube, perc_overlap_all,
+    total_overlap, perc
+  )
+}
+```
+
+```{r}
+# run function
+comp_range_data <- as.data.frame(studied_spec)
+comp_range_data$sabap2_squares <- NA
+comp_range_data$perc_sabap2_total_sabap2 <- NA
+comp_range_data$cube_squares <- NA
+comp_range_data$perc_cube_total_cube <- NA
+comp_range_data$overlap_birdcube_total_sabap2 <- NA
+comp_range_data$perc_birdcube_total_sabap2 <- NA
+comp_range_data$overlap_birdcube_spec_sabap2 <- NA
+comp_range_data$percentage_birdcube_spec_sabap2 <- NA
+
+for (i in studied_spec) {
+  test <- range_comp(i, period = 2015:2023)
+
+  comp_range_data[comp_range_data$studied_spec == i, 2] <- test[1]
+  comp_range_data[comp_range_data$studied_spec == i, 3] <- test[2]
+  comp_range_data[comp_range_data$studied_spec == i, 4] <- test[3]
+  comp_range_data[comp_range_data$studied_spec == i, 5] <- test[4]
+  comp_range_data[comp_range_data$studied_spec == i, 6] <- test[5]
+  comp_range_data[comp_range_data$studied_spec == i, 7] <- test[6]
+  comp_range_data[comp_range_data$studied_spec == i, 8] <- test[7]
+  comp_range_data[comp_range_data$studied_spec == i, 9] <- test[8]
+}
+```
+
+Range overlap
+
+```{r}
+# plot percentage range overlap
+RangeOHAAPen<-comp_range_data %>%
+  inner_join(SABAP2HAAPenYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common")))%>%
+  ggplot(aes(x = percentage_birdcube_spec_sabap2, fill = category)) +
+  geom_histogram() +
+  fillScale +
+  labs(
+    x = "Percentage range overlap",
+    y = "Number of species"
+  )+
+  theme_bw(base_size = 12) + theme(legend.position = "none")+
+  annotate("text", x=50, y=95, label= "mean = 22%")
+
+RangeOHAAPen
+```
+
+Range size
+
+```{r}
+# Plot number of grid cells in which species recorded in SABAP2 vs number of cells in which recorded in unstructured data
+RangeSHAAPen<-comp_range_data %>%
+  inner_join(SABAP2HAAPenYearSamp %>% distinct(species, category),
+    by = join_by(studied_spec == species)
+  ) %>% mutate(category = factor(category, levels = c("Very rare", "Rare", "Common","Very common", "Extremely common")))%>%
+  ggplot(aes(x = sabap2_squares, y = cube_squares, color = category)) +
+  geom_point() +
+  colScale +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Number of squares occupied\nby species in SABAP2 dataset",
+    y = "Number of squares occupied\nby species in cube dataset"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed") + guides(
+color = guide_legend(title = "Rarity", override.aes = aes(label = ""))
+) + theme(legend.position = "none")
+
+RangeSHAAPen
+```
+
+### Combined range overlap plot
+
+```{r}
+rangeOverlap<-ggarrange(RangeOWCPen,RangeOWCQDGC, RangeOHAAPen,RangeOHAAQDGC, nrow = 2, ncol = 2, labels = c("A.", "B.", "C.", "D."), common.legend = TRUE)
+
+rangeOverlap
+
+ggsave(filename = "Range_overlap.jpg", device = "jpeg", path = fig_path, plot = rangeOverlap, width = 8, height = 8, dpi = 300)
+```
+
+### Combined range size plot
+
+```{r}
+rangeSize<-ggarrange(RangeSWCPen,RangeSWCQDGC, RangeSHAAPen,RangeSHAAQDGC, nrow = 2, ncol = 2, labels = c("A.", "B.", "C.", "D."), common.legend = TRUE)
+
+rangeSize
+
+ggsave(filename = "Range_size.jpg", device = "jpeg", path = fig_path, plot = rangeSize, width = 8, height = 8, dpi = 300)
+```
+
+## Species richness (Western Cape only)
+
+### Analyses
+
+#### Process cubes
+
+Untructured data at QDGC
+
+```{r}
+WCunstrucQDGCproc <- process_cube(birdcubeWCYearQDGC,
+  grid_type = "eqdgc", first_year = 2015, cols_year = "year", cols_cellCode = "qdgccode", cols_occurrences = "n",
+  cols_minCoordinateUncertaintyInMeters = "mincoordinateuncertaintyinmeters", cols_familyCount = "familycount", cols_speciesKey = "specieskey"
+)
+```
+
+Structured data at QDGC
+
+```{r}
+WCStrucQDGCproc <- process_cube(SABAP2WCQDGCYearSamp, grid_type = "eqdgc", first_year = 2015, cols_year = "year", cols_cellCode = "qdgccode", cols_occurrences = "n", cols_speciesKey = "speciesKey", cols_familyCount = "familycount")
+```
+
+#### Observed richness
+
+Unstructured data QDGC
+
+```{r}
+map_obs_rich_WC_QDGCU <- obs_richness_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+```
+
+Structured data QDGC
+
+```{r}
+map_obs_rich_WC_QDGCS <- obs_richness_map(WCStrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium")
+```
+
+Comparison plot
+
+```{r}
+# Plot observed richness structured vs unstructured data
+obsRich<-map_obs_rich_WC_QDGCS$data %>%
+  st_drop_geometry() %>%
+  inner_join(map_obs_rich_WC_QDGCU$data,
+    by = join_by(cellid)
+  ) %>%
+  ggplot(aes(x = diversity_val.x, y = diversity_val.y)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Observed richness - structured data",
+    y = "Observed richness - unstructured data"
+  )+
+  theme_bw(base_size = 12) + geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+```
+
+#### Estimated richness (structured) vs observed richness (unstructured)
+
+Structured QDGC - calculated with iNEXT (i.e., actual survey effort used)
+
+```{r}
+inEXTestsWCQDGCS <- estimateD(WCQDGCincid,
+  datatype = "incidence_freq",
+  base = "coverage", level = NULL, conf = 0.95
+) # If base="coverage" and level=NULL, then this function computes the diversity estimates for the minimum among the coverage values for samples extrapolated to double the size of the reference sample.
+
+# note the level implemented is 0.945527
+
+richEstsWCQDGCS <- inEXTestsWCQDGCS %>% filter(Order.q == 0)
+```
+
+```{r}
+# function to get qgdc
+get_qdgc_code <- function(lat, lon) {
+  dirLon <- lon < 0 # true if longitude is negative
+  dirLat <- lat < 0 # true if latitude is negative
+
+  DegLonCod <- ifelse(dirLon == TRUE, "W", "E") # assign east/west
+  DegLatCod <- ifelse(dirLat == TRUE, "S", "N") # assign north/south
+
+  DegLon <- ifelse(dirLon == TRUE, -1 * ceiling(lon), floor(lon)) # extract the integer from longitude (always needs to be positive)
+  DegLat <- ifelse(dirLat == TRUE, -1 * ceiling(lat), floor(lat)) # extract the integer from latitude (always needs to be positive)
+
+  declat <- as.numeric(paste0("0.", unlist(stringr::str_split(lat, "\\."))[2])) # extract the fractional part of latitude
+  declon <- as.numeric(paste0("0.", unlist(stringr::str_split(lon, "\\."))[2])) # extract the fractional part of longitude
+
+  # Determine first code based on fractional portions
+
+  DegCode <- ifelse(declat < 0.5 & declon < 0.5, "A",
+    ifelse(declat < 0.5 & declon > 0.5, "B",
+      ifelse(declat > 0.5 & declon < 0.5, "C", "D")
+    )
+  )
+
+  # Determine second code based on fractional portions
+
+  DegCode <- ifelse(declat < 0.5 & declon < 0.5, "A",
+    ifelse(declat < 0.5 & declon > 0.5, "B",
+      ifelse(declat > 0.5 & declon < 0.5, "C", "D")
+    )
+  )
+
+
+  if (DegCode == "A") {
+    QDegCode <- ifelse(declat < 0.25 & declon < 0.25, "A",
+      ifelse(declat < 0.25 & declon > 0.25, "B",
+        ifelse(declat > 0.25 & declon < 0.25, "C", "D")
+      )
+    )
+  }
+
+  if (DegCode == "B") {
+    QDegCode <- ifelse(declat < 0.25 & declon < 0.75, "A",
+      ifelse(declat < 0.25 & declon > 0.75, "B",
+        ifelse(declat > 0.25 & declon < 0.75, "C", "D")
+      )
+    )
+  }
+
+  if (DegCode == "C") {
+    QDegCode <- ifelse(declat < 0.75 & declon < 0.25, "A",
+      ifelse(declat < 0.75 & declon > 0.25, "B",
+        ifelse(declat > 0.75 & declon < 0.25, "C", "D")
+      )
+    )
+  }
+
+  if (DegCode == "D") {
+    QDegCode <- ifelse(declat < 0.75 & declon < 0.75, "A",
+      ifelse(declat < 0.75 & declon > 0.75, "B",
+        ifelse(declat > 0.75 & declon < 0.75, "C", "D")
+      )
+    )
+  }
+
+  # Construct QDGC string
+
+  paste0(DegLonCod, "0", DegLon, DegLatCod, DegLat, DegCode, QDegCode)
+}
+```
+
+```{r}
+# get qdgc codes for the b3gbi estimates
+centroids <- st_centroid(map_obs_rich_WC_QDGCU$data)
+Hillcoords <- st_coordinates(centroids)
+
+map_obs_rich_WC_QDGCU$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot observed richness from unstructured data and estimated richness from iNEXT from structured data
+obsRich_estRich<-richEstsWCQDGCS %>%
+  inner_join(map_obs_rich_WC_QDGCU$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Observed richness - unstructured data\n(b3gbi)"
+  ) +
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+obsRich_estRich
+```
+
+
+#### Estimated richness (structured) vs estimated richness (unstructured) - inocidence with best coverage
+
+Run and plot the best options
+
+```{r}
+# Estimates from b3gbi (coverage 0.05) for unstructured data
+hill0_map_WC_QDGCU05 <- hill0_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.05, data_type = "incidence")
+```
+
+Comparative plots
+
+```{r}
+hill0_map_WC_QDGCU05$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot estimated richness for unstructured data (b3gbi - coverage 0.05) and estimated richness from iNEXT (0.94) from structured data
+estRichInc_estRich<-richEstsWCQDGCS %>%
+  inner_join(hill0_map_WC_QDGCU05$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Estimated richness - unstructured data\n(b3gbi - sample coverage threshold = 0.05,\ndata type = incidence)"
+    ) +
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+estRichInc_estRich
+```
+
+#### Estimated richness (structured) vs estimated richness (unstructured) - abundance with best coverage
+
+Unstructured QDGC - b3gbi with default settings (est option)
+
+```{r}
+# Estimates from b3gbi (coverage 0.95) for unstructured data
+hill0_map_WC_QDGCU95Ab <- hill0_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.95, data_type = "abundance")
+```
+
+Comparative plot
+
+```{r}
+hill0_map_WC_QDGCU95Ab$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot estimated richness for unstructured data (b3gbi (abundance) - coverage 0.95) and estimated richness from iNEXT (incidence - 0.995 ) from structured data
+estRichAbun_estRich<-richEstsWCQDGCS %>%
+  inner_join(hill0_map_WC_QDGCU95Ab$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Estimated richness - structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Estimated richness - unstructured data\n(b3gbi - sample coverage threshold = 0.95,\ndata type = abundance)"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+estRichAbun_estRich
+```
+
+### Combined species richness plot
+
+```{r}
+sppRich<-ggarrange(obsRich, obsRich_estRich, estRichInc_estRich, estRichAbun_estRich, nrow = 2, ncol = 2, labels = c("A.", "B.", "C.", "D."))
+
+sppRich
+
+ggsave(filename = "Species_richness.jpg", device = "jpeg", path = fig_path, plot = sppRich, width = 8, height = 8, dpi = 300)
+```
+
+## Shannon index (Western Cape only)
+
+### Analyses
+
+#### Shannon index (structured) vs shannon index (unstructured) - incidence with best coverage
+
+Run and plot the best options for unstructured data
+
+```{r}
+# Estimates from b3gbi (coverage 0.05) for unstructured data
+hill1_map_WC_QDGCU05 <- hill1_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.05, data_type = "incidence")
+```
+
+Structured QDGC - calculated with iNEXT (i.e., actual survey effort used)
+
+```{r}
+hill1EstsWCQDGCS <- inEXTestsWCQDGCS %>% filter(Order.q == 1)
+```
+
+Comparative plot
+
+```{r}
+hill1_map_WC_QDGCU05$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot shannon diversity from unstructured data (b3gbi - coverage 0.05) and shannon diversity from iNEXT (0.94) from structured data
+estRShanInc_estShan<-hill1EstsWCQDGCS %>%
+  inner_join(hill1_map_WC_QDGCU05$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon diversity -structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Shannon diversity - unstructured data\n(b3gbi - sample coverage threshold = 0.05,\ndata type = incidence)"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+estRShanInc_estShan
+```
+
+#### Shannon index (structured) vs shannon index (unstructured) - - abundance with best coverage
+
+Re-run and plot the best options
+
+```{r}
+# Estimates from b3gbi (coverage 0.95) for unstructured data
+hill1_map_WC_QDGCU95Ab <- hill1_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.95, data_type = "abundance")
+```
+
+Comparative plot
+
+```{r}
+hill1_map_WC_QDGCU95Ab$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot shannon diversity from unstructured data (b3gbi (abundance) - coverage 0.95) and shannon diversity from iNEXT (incidence - 0.995) from structured data
+estShanAbun_estShan<-hill1EstsWCQDGCS %>%
+  inner_join(hill1_map_WC_QDGCU95Ab$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Shannon diversity - structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Shannon diversity - unstructured data\n(b3gbi - sample coverage = 0.95,\ndata type = abundance)"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+estShanAbun_estShan
+```
+
+### Combined shannon index plot
+
+```{r}
+ShanInd<-ggarrange(estRShanInc_estShan, estShanAbun_estShan, nrow = 1, labels = c("A.", "B."))
+
+ShanInd
+
+ggsave(filename = "Shannon_index.jpg", device = "jpeg", path = fig_path, plot = ShanInd, width = 8, height = 4, dpi = 300)
+```
+
+## Simpson index (Western Cape only)
+
+### Analyses
+
+#### Simpson index (structured) vs simpson index (unstructured) - incidence with best coverage
+
+Run and plot the best options
+
+```{r}
+# Estimates from b3gbi (coverage 0.05) for unstructured data
+hill2_map_WC_QDGCU05 <- hill2_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.05, data_type = "incidence")
+```
+
+Structured QDGC - calculated with iNEXT (i.e., actual survey effort used)
+
+```{r}
+hill2EstsWCQDGCS <- inEXTestsWCQDGCS %>% filter(Order.q == 2)
+```
+
+
+Comparative plot
+
+```{r}
+hill2_map_WC_QDGCU05$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot simpson diversity from unstructured data (b3gbi - coverage 0.05) and simpson diversity from iNEXT (0.94) from structured data
+estSimpInc_estSimp<-hill2EstsWCQDGCS %>%
+  inner_join(hill2_map_WC_QDGCU05$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson diversity - structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Simpson diversity - unstructured data\n(b3gbi - sample coverage threshold = 0.05,\ndata type = incidence)"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+estSimpInc_estSimp
+```
+
+#### Simpson index (structured) vs simpson index (unstructured) - abundance with best coverage
+
+Run and plot the best options
+
+```{r}
+# Estimates from b3gbi (coverage 0.55) for unstructured data
+hill2_map_WC_QDGCU55Ab <- hill2_map(WCunstrucQDGCproc, cell_size = 0.25, level = "cube", region = "South Africa", ne_scale = "medium", coverage = 0.55, data_type = "abundance")
+```
+
+Comparative plot
+
+```{r}
+hill2_map_WC_QDGCU55Ab$data$QDGCcode <- apply(Hillcoords[, c("Y", "X")], 1, function(y) get_qdgc_code(y["Y"], y["X"]))
+```
+
+```{r}
+# Plot simpson diversity from unstructured data (b3gbi (abundance) - coverage 0.55) and simpson diversity from iNEXT (incidence - 0.945) from structured data
+estSimpAbun_estSimp<-hill2EstsWCQDGCS %>%
+  inner_join(hill2_map_WC_QDGCU55Ab$data,
+    by = join_by(Assemblage == QDGCcode)
+  ) %>%
+  ggplot(aes(x = qD, y = diversity_val)) +
+  geom_point(color = "#1B9E77") +
+  ggpubr::stat_cor(
+    mapping = aes(color = NULL),
+    label.x.npc = "centre",
+    label.y.npc = "bottom",
+    method = "pearson"
+  ) +
+  labs(
+    x = "Simpson diversity - structured data\n(iNEXT - sample coverage = 0.945)",
+    y = "Simpson diversity - unstructured data\n(b3gbi - sample coverage threshold =  0.55,\ndata type = abundance)"
+  )+
+  theme_bw(base_size = 12)+ geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dashed")
+
+estSimpAbun_estSimp
+```
+
+### Combined Simpson index plot
+
+```{r}
+SimpInd<-ggarrange(estSimpInc_estSimp, estSimpAbun_estSimp, nrow = 1, labels = c("A.", "B."))
+
+SimpInd
+
+ggsave(filename = "Simpson_index.jpg", device = "jpeg", path = fig_path, plot = SimpInd, width = 8, height = 4, dpi = 300)
+```
