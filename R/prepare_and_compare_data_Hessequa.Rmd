@@ -13,7 +13,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
@@ -204,7 +204,7 @@ The query had the same specifications as the cube query, except 8 000 m (8km) wa
 
 Note, personal details (usernname, password and email address) have been removed from script below
 
-```{r}
+```{r, eval = FALSE}
 occ_download(
   user = "", pwd = "", email = "", pred("taxonKey", 212),
   pred("occurrenceStatus", "PRESENT"),
@@ -748,7 +748,7 @@ summary(HAAPenSC$DataInfo$SC) # summary of sample coverag
 # Write data to file
 
 ```{r}
-out_path <- here::here("data", "interim")
+out_path <- here::here("data", "processed")
 dir.create(out_path, showWarnings = FALSE, recursive = TRUE)
 
 # Structured data at QDGC scale

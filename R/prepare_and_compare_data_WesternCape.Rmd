@@ -13,7 +13,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
@@ -793,7 +793,7 @@ birdcubeWCYearPentad <- birdcubeWCYearPentad %>% filter(pentad %in% highSampPen$
 # Write data to file
 
 ```{r}
-out_path <- here::here("data", "interim")
+out_path <- here::here("data", "processed")
 dir.create(out_path, showWarnings = FALSE, recursive = TRUE)
 
 # Structured data at QDGC scale
