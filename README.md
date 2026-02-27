@@ -1,5 +1,9 @@
-[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18482571.svg)](https://doi.org/10.5281/zenodo.18482571)
+[![Release](https://img.shields.io/github/release/b-cubed-eu/rsa-unstructured-data-comp.svg)](https://github.com/b-cubed-eu/rsa-unstructured-data-comp/releases)
 ![GitHub License](https://img.shields.io/github/license/b-cubed-eu/rsa-unstructured-data-comp)
+[![repo status](https://www.repostatus.org/badges/latest/inactive.svg)](https://www.repostatus.org/#inactive)
+![GitHub repo size](https://img.shields.io/github/repo-size/b-cubed-eu/rsa-unstructured-data-comp)
+[![funder](https://badgen.net/static/funder/European%20Union/f2a)](https://doi.org/10.3030/101059592)
 
 # rsa-unstructured-data-comp
 Occurrence data in GBIF have various limitations and biases, due in part to biases in survey effort. Therefore, analyses that use these data to estimate biodiversity status and trends can be misleading.
