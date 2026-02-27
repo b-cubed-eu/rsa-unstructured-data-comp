@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18482571.svg)](https://doi.org/10.5281/zenodo.18482571)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18482570.svg)](https://doi.org/10.5281/zenodo.18482570)
 [![Release](https://img.shields.io/github/release/b-cubed-eu/rsa-unstructured-data-comp.svg)](https://github.com/b-cubed-eu/rsa-unstructured-data-comp/releases)
 ![GitHub License](https://img.shields.io/github/license/b-cubed-eu/rsa-unstructured-data-comp)
 [![repo status](https://www.repostatus.org/badges/latest/inactive.svg)](https://www.repostatus.org/#inactive)
