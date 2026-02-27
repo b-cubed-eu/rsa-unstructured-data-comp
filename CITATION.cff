@@ -5,5 +5,6 @@ authors:
   given-names: "Katelyn"
   orcid: "https://orcid.org/0000-0002-3955-353X"
 title: "rsa-unstructured-data-comp"
+doi: 10.5281/zenodo.18482571
 version: 1.0.0
 url: "https://github.com/KatelynFaulkner/rsa-unstructured-data-comp"
